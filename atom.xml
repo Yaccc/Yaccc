@@ -1,0 +1,758 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title><![CDATA[「浮生若梦」]]></title>
+  
+  <link href="/atom.xml" rel="self"/>
+  <link href="http://zhaodong.duapp.com/"/>
+  <updated>2016-01-10T09:27:23.000Z</updated>
+  <id>http://zhaodong.duapp.com/</id>
+  
+  <author>
+    <name><![CDATA[谢照东]]></name>
+    
+  </author>
+  
+  <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title><![CDATA[高性能IO模型浅析]]></title>
+    <link href="http://zhaodong.duapp.com/2016/01/10/%E9%AB%98%E6%80%A7%E8%83%BDIO%E6%A8%A1%E5%9E%8B%E6%B5%85%E6%9E%90/"/>
+    <id>http://zhaodong.duapp.com/2016/01/10/高性能IO模型浅析/</id>
+    <published>2016-01-10T05:52:34.000Z</published>
+    <updated>2016-01-10T09:27:23.000Z</updated>
+    <content type="html"><![CDATA[<p>服务器端编程经常需要构造高性能的 IO 模型，常见的 IO 模型有四种：</p>
+<ul>
+<li>同步阻塞 IO（Blocking IO）：即传统的 IO 模型。</li>
+<li>同步非阻塞 IO（Non-blocking IO）：默认创建的 socket 都是阻塞的，非阻塞 IO 要求 socket 被设置为 NONBLOCK。注意这里所说的 NIO 并非 Java 的 NIO（New IO）库。</li>
+<li>IO 多路复用（IO Multiplexing）：即经典的 Reactor 设计模式，有时也称为异步阻塞 IO，Java 中的 Selector 和 Linux 中的 epoll 都是这种模型。</li>
+<li>异步 IO（Asynchronous IO）：即经典的 Proactor 设计模式，也称为异步非阻塞 IO。</li>
+</ul>
+<p>同步（synchronous）和异步（asynchronous）的概念描述的是用户线程与内核的<strong>交互方式</strong>：同步是指用户线程发起 IO 请求后需要等待或者轮询内核 IO 操作完成后才能继续执行；而异步是指用户线程发起 IO 请求后仍继续执行，当内核 IO 操作完成后会通知用户线程，或者调用用户线程注册的回调函数。<br>阻塞（blocking）和非阻塞（non-blocking）的概念描述的是用户线程调用内核 IO 的<strong>操作方式</strong>：阻塞是指 IO 操作需要彻底完成后才返回到用户空间；而非阻塞是指 IO 操作被调用后立即返回给用户一个状态值，无需等到 IO 操作彻底完成。</p>
+<p>再说一下 IO 发生时涉及的对象和步骤。对于一个 network IO（这里我们以 read 举例），它会涉及到两个系统对象，一个是调用这个 IO 的 process（or thread），另一个就是系统内核（kernel）。当一个 read 操作发生时，它会经历两个阶段：</p>
+<ol>
+<li>等待数据准备（Waiting for the data to be ready）</li>
+<li>将数据从内核拷贝到进程中（Copying the data from the kernel to the process）<br>记住这两点很重要，因为这些 IO 模型的区别就是在两个阶段上各有不同的情况。</li>
+</ol>
+<h3 id="1-_同步阻塞_IO">1. 同步阻塞 IO</h3><p>在 linux 中，默认情况下所有的 socket 都是 blocking，一个典型的读操作流程大概是这样：<br><img src="http://img.blog.csdn.net/20160110125605401?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQv/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt="此处输入图片的描述"><br>  当用户进程调用了 recvfrom 这个系统调用，kernel 就开始了 IO 的第一个阶段：准备数据。对于 network io 来说，很多时候数据在一开始还没有到达（比如，还没有收到一个完整的 UDP 包），这个时候 kernel 就要等待足够的数据到来。而在用户进程这边，整个进程会被阻塞。当 kernel 一直等到数据准备好了，它就会将数据从 kernel 中拷贝到用户内存，然后 kernel 返回结果，用户进程才解除 block 的状态，重新运行起来。<br><strong>所以，blocking IO 的特点就是在 IO 执行的两个阶段（等待数据和拷贝数据两个阶段）都被 block 了。</strong></p>
+<p>几乎所有的程序员第一次接触到的网络编程都是从 listen()、send()、recv() 等接口开始的，这些接口都是阻塞型的。使用这些接口可以很方便的构建服务器 / 客户机的模型。下面是一个简单地”一问一答”的服务器。<br><img src="http://img.blog.csdn.net/20160110125656778?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQv/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt="此处输入图片的描述"></p>
+<p>  我们注意到，大部分的 socket 接口都是阻塞型的。所谓阻塞型接口是指系统调用（一般是 IO 接口）不返回调用结果并让当前线程一直阻塞，只有当该系统调用获得结果或者超时出错时才返回。<br>  实际上，除非特别指定，几乎所有的 IO 接口 ( 包括 socket 接口 ) 都是阻塞型的。这给网络编程带来了一个很大的问题，如在调用 send() 的同时，线程将被阻塞，在此期间，线程将无法执行任何运算或响应任何的网络请求。<br>一个简单的改进方案是在服务器端使用多线程（或多进程）。多线程（或多进程）的目的是让每个连接都拥有独立的线程（或进程），这样任何一个连接的阻塞都不会影响其他的连接。具体使用多进程还是多线程，并没有一个特定的模式。<strong>传统意义上，进程的开销要远远大于线程，所以如果需要同时为较多的客户机提供服务，则不推荐使用多进程；如果单个服务执行体需要消耗较多的CPU资源，譬如需要进行大规模或长时间的数据运算或文件访问，则进程较为安全</strong>。通常，使用 pthread_create() 创建新线程，fork() 创建新进程。<br>我们假设对上述的服务器 / 客户机模型，提出更高的要求，即让服务器同时为多个客户机提供一问一答的服务。于是有了如下的模型。</p>
+<p><img src="http://img.blog.csdn.net/20160110125723918?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQv/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt="此处输入图片的描述"></p>
+<p>在上述的线程 / 时间图例中，主线程持续等待客户端的连接请求，如果有连接，则创建新线程，并在新线程中提供为前例同样的问答服务。<br>很多初学者可能不明白为何一个 socket 可以 accept 多次。实际上 socket 的设计者可能特意为多客户机的情况留下了伏笔，让 accept() 能够返回一个新的 socket。下面是 accept 接口的原型：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">accept</span><span class="params">(ints,<span class="keyword">struct</span> sockaddr *addr, socklen_t *addrlen)</span></span>;</span><br></pre></td></tr></table></figure></p>
+<p>输入参数 s 是从 socket()，bind() 和 listen() 中沿用下来的 socket 句柄值。执行完 bind() 和 listen() 后，操作系统已经开始在指定的端口处监听所有的连接请求，如果有请求，则将该连接请求加入请求队列。调用 accept() 接口正是从 socket s 的请求队列抽取第一个连接信息，创建一个与 s 同类的新的 socket 返回句柄。新的 socket 句柄即是后续 read() 和 recv() 的输入参数。如果请求队列当前没有请求，则 accept() 将进入阻塞状态直到有请求进入队列。<br>上述多线程的服务器模型似乎完美的解决了为多个客户机提供问答服务的要求，但其实并不尽然。如果要同时响应成百上千路的连接请求，则无论多线程还是多进程都会严重占据系统资源，降低系统对外界响应效率，而线程与进程本身也更容易进入假死状态。<br>很多程序员可能会考虑使用”线程池”或”连接池”。”线程池”旨在减少创建和销毁线程的频率，其维持一定合理数量的线程，并让空闲的线程重新承担新的执行任务。”连接池”维持连接的缓存池，尽量重用已有的连接、减少创建和关闭连接的频率。这两种技术都可以很好的降低系统开销，都被广泛应用很多大型系统，如 websphere、tomcat 和各种数据库等。但是，”线程池”和”连接池”技术也只是在一定程度上缓解了频繁调用 IO 接口带来的资源占用。而且，<strong>所谓”池”始终有其上限，当请求大大超过上限时，”池”构成的系统对外界的响应并不比没有池的时候效果好多少。所以使用”池”必须考虑其面临的响应规模，并根据响应规模调整”池”的大小</strong>。<br>对应上例中的所面临的可能同时出现的上千甚至上万次的客户端请求，”线程池”或”连接池”或许可以缓解部分压力，但是不能解决所有问题。总之，多线程模型可以方便高效的解决小规模的服务请求，但面对大规模的服务请求，多线程模型也会遇到瓶颈，可以用非阻塞接口来尝试解决这个问题。</p>
+<h3 id="2-_同步非阻塞_IO">2. 同步非阻塞 IO</h3><p>Linux 下，可以通过设置 socket 使其变为 non-blocking。当对一个 non-blocking socket 执行读操作时，流程是这个样子：<br><img src="http://img.blog.csdn.net/20160110125824640?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQv/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt="此处输入图片的描述"></p>
+<p>  从图中可以看出，当用户进程发出 read 操作时，如果 kernel 中的数据还没有准备好，那么它并不会 block 用户进程，而是立刻返回一个 error。从用户进程角度讲 ，它发起一个 read 操作后，并不需要等待，而是马上就得到了一个结果。用户进程判断结果是一个 error 时，它就知道数据还没有准备好，于是它可以再次发送 read 操作。一旦 kernel 中的数据准备好了，并且又再次收到了用户进程的 system call，那么它马上就将数据拷贝到了用户内存，然后返回。<br><strong>所以，在非阻塞式 IO 中，用户进程其实是需要不断的主动询问 kernel 数据准备好了没有</strong>。<br>非阻塞的接口相比于阻塞型接口的显著差异在于，在被调用之后立即返回。使用如下的函数可以将某句柄 fd 设为非阻塞状态。<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">fcntl</span><span class="params">(fd, F_SETFL, O_NONBLOCK )</span></span>;</span><br></pre></td></tr></table></figure></p>
+<p>下面将给出只用一个线程，但能够同时从多个连接中检测数据是否送达，并且接受数据的模型。<br><img src="http://img.blog.csdn.net/20160110125856926?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQv/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt="此处输入图片的描述"></p>
+<p>在非阻塞状态下，recv() 接口在被调用后立即返回，返回值代表了不同的含义。如在本例中，</p>
+<ul>
+<li>recv() 返回值大于 0，表示接受数据完毕，返回值即是接受到的字节数；</li>
+<li>recv() 返回 0，表示连接已经正常断开；</li>
+<li>recv() 返回 -1，且 errno 等于 EAGAIN，表示 recv 操作还没执行完成;</li>
+<li>recv() 返回 -1，且 errno 不等于 EAGAIN，表示 recv 操作遇到系统错误 errno。</li>
+</ul>
+<p>可以看到服务器线程可以通过循环调用 recv() 接口，可以在单个线程内实现对所有连接的数据接收工作。但是上述模型绝不被推荐。因为，<strong>循环调用 recv() 将大幅度推高 CPU 占用率；此外，在这个方案中 recv() 更多的是起到检测”操作是否完成”的作用，实际操作系统提供了更为高效的检测”操作是否完成”作用的接口，例如 select() 多路复用模式，可以一次检测多个连接是否活跃。</strong></p>
+<h3 id="3-_IO_多路复用">3. IO 多路复用</h3><blockquote>
+<p>同步阻塞IO在等待数据就绪上花去太多时间，而传统的同步非阻塞IO虽然不会阻塞进程，但是结合轮询来判断数据是否就绪仍然会耗费大量的CPU时间。<br>多路IO复用提供了对大量文件描述符进行就绪检查的高性能方案。<br>select<br>select诞生于4.2BSD，在几乎所有平台上都支持，其良好的跨平台支持是它的主要的也是为数不多的优点之一。<br>select的缺点（1）单个进程能够监视的文件描述符的数量存在最大限制（2）select需要复制大量的句柄数据结构，产生巨大的开销 （3）select返回的是含有整个句柄的列表，应用程序需要遍历整个列表才能发现哪些句柄发生了事件（4）select的触发方式是水平触发，应用程序如果没有完成对一个已经就绪的文件描述符进行IO操作，那么之后每次select调用还是会将这些文件描述符通知进程。相对应方式的是边缘触发。<br>poll<br>poll 诞生于UNIX System V Release 3，那时AT&amp;T已经停止了UNIX的源代码授权，所以显然也不会直接使用BSD的select，所以AT&amp;T自己实现了一个和select没有多大差别的poll。<br>poll和select是名字不同的孪生兄弟，除了没有监视文件数量的限制，select后面3条缺点同样适用于poll。<br>面对select和poll的缺陷，不同的OS做出了不同的解决方案，可谓百花齐放。不过他们至少完成了下面两点超越，一是内核长期维护一个事件关注列表，我们只需要修改这个列表，而不需要将句柄数据结构复制到内核中；二是直接返回事件列表，而不是所有句柄列表。<br>/dev/poll<br>Sun在Solaris中提出了新的实现方案，它使用了虚拟的/dev/poll设备，开发者可以将要监视的文件描述符加入这个设备，然后通过ioctl()来等待事件通知。<br>/dev/epoll<br>名为/dev/epoll的设备以补丁的方式出现在Linux2.4中，它提供了类似/dev/poll的功能，并且在一定程度上使用mmap提高了性能。<br>kqueue<br>FreeBSD实现了kqueue，可以支持水平触发和边缘触发，性能和下面要提到的epoll非常接近。<br>epoll<br>epoll诞生于Linux 2.6内核，被公认为是Linux2.6下性能最好的多路IO复用方法。<br>?</p>
+</blockquote>
+<p>IO multiplexing 这个词可能有点陌生，但是如果我说 select / epoll，大概就都能明白了。有些地方也称这种 IO 方式为事件驱动 IO（event driven IO）。我们都知道，select / epoll 的好处就在于单个 process 就可以同时处理多个网络连接的 IO。它的基本原理就是 select / epoll 这个 function 会不断的轮询所负责的所有 socket，当某个 socket 有数据到达了，就通知用户进程。它的流程如图：<br><img src="http://img.blog.csdn.net/20160110130225153?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQv/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt="此处输入图片的描述"></p>
+<p>当用户进程调用了 select，那么整个进程会被 block，而同时，kernel 会”监视”所有 select 负责的 socket，当任何一个 socket 中的数据准备好了，select 就会返回。这个时候用户进程再调用 read 操作，将数据从 kernel 拷贝到用户进程。<br>这个图和 blocking IO 的图其实并没有太大的不同，事实上还更差一些。因为这里需要使用两个系统调用（select 和 recvfrom），而 blocking IO 只调用了一个系统调用（recvfrom）。但是，用 select 的优势在于它可以同时处理多个 connection。（多说一句：所以，如果处理的连接数不是很高的话，使用 select / epoll 的 web server 不一定比使用 multi-threading + blocking IO 的 web server 性能更好，可能延迟还更大。select / epoll 的优势并不是对于单个连接能处理得更快，而是在于能处理更多的连接。）<br><strong>在多路复用模型中，对于每一个 socket，一般都设置成为 non-blocking，但是，如上图所示，整个用户的 process 其实是一直被 block 的</strong>。只不过 process 是被 select 这个函数 block，而不是被 socket IO 给 block。因此 select() 与非阻塞 IO 类似。<br>用户线程使用 select 函数的伪代码描述为：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line"></span><br><span class="line">    select(socket);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">while</span>(<span class="number">1</span>)&#123;</span><br><span class="line">        sockets= select();</span><br><span class="line">        <span class="keyword">for</span>(socket in sockets) &#123;</span><br><span class="line">            <span class="keyword">if</span>(can_read(socket))&#123;</span><br><span class="line">                read(socket,buffer);</span><br><span class="line">                process(buffer);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>其中 while 循环前将 socket 添加到 select 监视中，然后在 while 内一直调用 select 获取被激活的 socket，一旦 socket 可读，便调用 read 函数将 socket 中的数据读取出来。<br>IO 多路复用模型使用了 Reactor 设计模式实现了这一机制。<br><img src="http://img.blog.csdn.net/20160110130334622?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQv/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt="此处输入图片的描述"></p>
+<p>如图所示，EventHandler 抽象类表示 IO 事件处理器，它拥有 IO 文件句柄 Handle（通过 get_handle 获取），以及对 Handle 的操作 handle_event（读/写等）。继承于 EventHandler 的子类可以对事件处理器的行为进行定制。Reactor 类用于管理 EventHandler（注册、删除等），并使用 handle_events 实现事件循环，不断调用同步事件多路分离器（一般是内核）的多路分离函数 select，只要某个文件句柄被激活（可读/写等），select 就返回（阻塞），handle_events 就会调用与文件句柄关联的事件处理器的 handle_event 进行相关操作<br><img src="http://img.blog.csdn.net/20160110130402226?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQv/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt="此处输入图片的描述"></p>
+<p>如图所示，通过 Reactor的方式，可以将用户线程轮询 IO 操作状态的工作统一交给 handle_events 事件循环进行处理。用户线程注册事件处理器之后可以继续执行做其他的工作（异步），而 Reactor 线程负责调用内核的 select 函数检查 socket 状态。当有 socket 被激活时，则通知相应的用户线程（或执行用户线程的回调函数），执行 handle_event 进行数据读取、处理的工作。由于 select 函数是阻塞的，因此多路 IO 复用模型也被称为异步阻塞 IO 模型。注意，这里的所说的阻塞是指 select 函数执行时线程被阻塞，而不是指 socket。一般在使用 IO 多路复用模型时，socket 都是设置为 NONBLOCK 的，不过这并不会产生影响，因为用户发起 IO 请求时，数据已经到达了，用户线程一定不会被阻塞。<br>用户线程使用 IO 多路复用模型的伪代码描述为：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> UserEventHandler::handle_event()&#123;</span><br><span class="line">    <span class="keyword">if</span>(can_read(socket))&#123;</span><br><span class="line">        read(socket,buffer);</span><br><span class="line">        process(buffer);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">&#123;</span><br><span class="line">    Reactor.<span class="keyword">register</span>(newUserEventHandler(socket));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>用户需要重写 EventHandler 的 handle_event 函数进行读取数据、处理数据的工作，用户线程只需要将自己的 EventHandler 注册到 Reactor 即可。Reactor 中 handle_events 事件循环的伪代码大致如下。<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">Reactor::handle_events()</span><br><span class="line"> &#123;</span><br><span class="line">    <span class="keyword">while</span>(<span class="number">1</span>)</span><br><span class="line"> &#123;</span><br><span class="line">        sockets= select();</span><br><span class="line">        <span class="keyword">for</span>(socket in sockets) &#123;</span><br><span class="line">            get_event_handler(socket).handle_event();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>事件循环不断地调用 select 获取被激活的 socket，然后根据获取 socket 对应的 EventHandler，执行器 handle_event 函数即可。<br>大部分 Unix/Linux 都支持 select 函数，该函数用于探测多个文件句柄的状态变化。下面给出 select 接口的原型：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span><br><span class="line"></span><br><span class="line"> *</span><br><span class="line"> nfds：select()函数监视的描述符数的最大值，一般取监视的描述符数的最大值+1，其上限设置在sys/types.h中有定义</span><br><span class="line"></span><br><span class="line"> *</span><br><span class="line"> readfds：select()函数监视的可读描述符集合</span><br><span class="line"></span><br><span class="line"> *</span><br><span class="line"> wtitefds：select()函数监视的可写描述符集合</span><br><span class="line"></span><br><span class="line"> *</span><br><span class="line"> errnofds：select()函数监视的异常描述符集合</span><br><span class="line"></span><br><span class="line"> *</span><br><span class="line"> timeout：select()函数监视超时结束时间，取NULL表示永久等待</span><br><span class="line"></span><br><span class="line"> */</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">select</span><span class="params">(<span class="keyword">int</span> nfds,</span><br><span class="line"> fd_set *readfds, fd_set *writefds, fd_set *exceptfds, <span class="keyword">struct</span> timeval *timeout)</span></span></span><br></pre></td></tr></table></figure></p>
+<p>这里，fd_set 类型可以简单的理解为按 bit 位标记句柄的队列，例如要在某 fd_set 中标记一个值为16的句柄，则该 fd_set 的第16个 bit 位被标记为1。具体的置位、验证可使用 FD_SET、FD_ISSET 等宏实现。在 select() 函数中，readfds、writefds 和 exceptfds 同时作为输入参数和输出参数。如果输入的 readfds 标记了16号句柄，则 select() 将检测16号句柄是否可读。在 select() 返回后，可以通过检查 readfds 有否标记16号句柄，来判断该”可读”事件是否发生。另外，用户可以设置 timeout 时间。<br>返回值：返回总的位数这些位对应已准备好的描述符，否则返回-1。相关宏操作：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">FD_ZERO(<span class="keyword">int</span> fd,</span><br><span class="line"> fd_set* fds) <span class="comment">//</span></span><br><span class="line"> 清空 fdset 与所有描述符的关系</span><br><span class="line"></span><br><span class="line">FD_SET(<span class="keyword">int</span> fd,</span><br><span class="line"> fd_set* fds) <span class="comment">//</span></span><br><span class="line"> 建立描述符 fd 与 fdset 的关系</span><br><span class="line"></span><br><span class="line">FD_ISSET(<span class="keyword">int</span> fd,</span><br><span class="line"> fd_set* fds) <span class="comment">//</span></span><br><span class="line"> 撤销描述符 fd 与 fdset 的关系</span><br><span class="line"></span><br><span class="line">FD_CLR(<span class="keyword">int</span> fd,</span><br><span class="line"> fd_set* fds) <span class="comment">//</span></span><br><span class="line"> 检查与 fdset 联系的描述符 fd 是否可以读写，返回非零表示可以读写</span><br></pre></td></tr></table></figure></p>
+<p>下面将重新模拟上例中从多个客户端接收数据的模型。<br><img src="http://img.blog.csdn.net/20160110130437424?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQv/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt="此处输入图片的描述"></p>
+<p>上述模型只是描述了使用 select() 接口同时从多个客户端接收数据的过程；由于 select() 接口可以同时对多个句柄进行读状态、写状态和错误状态的探测，所以可以很容易构建为多个客户端提供独立问答服务的服务器系统。如下图。</p>
+<p><img src="http://img.blog.csdn.net/20160110130459587?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQv/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt="此处输入图片的描述"></p>
+<p>  这里需要指出的是，客户端的一个 connect() 操作，将在服务器端激发一个”可读事件”，所以 select() 也能探测来自客户端的 connect() 行为。<br>上述模型中，最关键的地方是如何动态维护 select() 的三个参数 readfds、writefds 和 exceptfds。作为输入参数，readfds 应该标记所有的需要探测的”可读事件”的句柄，其中永远包括那个探测 connect() 的那个”母”句柄；同时，writefds 和 exceptfds 应该标记所有需要探测的”可写事件”和”错误事件”的句柄 ( 使用 FD_SET() 标记 )。<br>作为输出参数，readfds、writefds 和 exceptfds 中的保存了 select() 捕捉到的所有事件的句柄值。程序员需要检查的所有的标记位 ( 使用 FD_ISSET() 检查 )，以确定到底哪些句柄发生了事件。<br>上述模型主要模拟的是”一问一答”的服务流程，所以如果 select() 发现某句柄捕捉到了”可读事件”，服务器程序应及时做 recv() 操作，并根据接收到的数据准备好待发送数据，并将对应的句柄值加入 writefds，准备下一次的”可写事件”的 select() 探测。同样，如果 select() 发现某句柄捕捉到”可写事件”，则程序应及时做 send() 操作，并准备好下一次的”可读事件”探测准备。下图描述的是上述模型中的一个执行周期。<br><img src="http://img.blog.csdn.net/20160110130522314?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQv/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt="此处输入图片的描述"></p>
+<p>这种模型的特征在于每一个执行周期都会探测一次或一组事件，一个特定的事件会触发某个特定的响应。我们可以将这种模型归类为”事件驱动模型”。<br>相比其他模型，使用 select() 的事件驱动模型只用单线程（进程）执行，占用资源少，不消耗太多 CPU，同时能够为多客户端提供服务。如果试图建立一个简单的事件驱动的服务器程序，这个模型有一定的参考价值。<br>但这个模型依旧有着很多问题。<strong>首先 select() 接口并不是实现”事件驱动”的最好选择。因为当需要探测的句柄值较大时，select() 接口本身需要消耗大量时间去轮询各个句柄</strong>。很多操作系统提供了更为高效的接口，如 linux 提供了 epoll，BSD 提供了 kqueue，Solaris 提供了 /dev/poll … 如果需要实现更高效的服务器程序，类似 epoll 这样的接口更被推荐。遗憾的是不同的操作系统特供的 epoll 接口有很大差异，所以使用类似于 epoll 的接口实现具有较好跨平台能力的服务器会比较困难。<br><strong>其次，该模型将事件探测和事件响应夹杂在一起，一旦事件响应的执行体庞大，则对整个模型是灾难性的</strong>。如下例，庞大的执行体1的将直接导致响应事件2的执行体迟迟得不到执行，并在很大程度上降低了事件探测的及时性。<br><img src="http://img.blog.csdn.net/20160110130546397?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQv/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt="此处输入图片的描述"></p>
+<p>幸运的是，有很多高效的事件驱动库可以屏蔽上述的困难，常见的事件驱动库有 libevent 库，还有作为 libevent 替代者的 libev 库。这些库会根据操作系统的特点选择最合适的事件探测接口，并且加入了信号（signal）等技术以支持异步响应，这使得这些库成为构建事件驱动模型的不二选择。</p>
+<h3 id="4-_异步IO">4. 异步IO</h3><p>Linux 下的 asynchronous IO 其实用得不多，从内核2.6版本才开始引入。先看一下它的流程：<br><img src="http://img.blog.csdn.net/20160110130610489?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQv/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt="此处输入图片的描述"></p>
+<p>用户进程发起 read 操作之后，立刻就可以开始去做其它的事。而另一方面，从 kernel 的角度，当它受到一个 asynchronous read 之后，首先它会立刻返回，所以不会对用户进程产生任何 block。然后，kernel 会等待数据准备完成，然后将数据拷贝到用户内存，当这一切都完成之后，kernel 会给用户进程发送一个 signal，告诉它 read 操作完成了。<br>“真正”的异步 IO 需要操作系统更强的支持。在 IO 多路复用模型中，事件循环将文件句柄的状态事件通知给用户线程，由用户线程自行读取数据、处理数据。而在异步 IO 模型中，当用户线程收到通知时，数据已经被内核读取完毕，并放在了用户线程指定的缓冲区内，内核在 IO 完成后通知用户线程直接使用即可。<br>异步 IO 模型使用了 Proactor 设计模式实现了这一机制。<br><img src="http://img.blog.csdn.net/20160110130644123?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQv/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt="此处输入图片的描述"><br>如图，Proactor 模式和 Reactor<br>  模式在结构上比较相似，不过在用户（Client）使用方式上差别较大。Reactor 模式中，用户线程通过向 Reactor 对象注册感兴趣的事件监听，然后事件触发时调用事件处理函数。而 Proactor 模式中，用户线程将 AsynchronousOperation（读/写等）、Proactor 以及操作完成时的 CompletionHandler 注册到 AsynchronousOperationProcessor。AsynchronousOperationProcessor 使用 Facade 模式提供了一组异步操作 API（读/写等）供用户使用，当用户线程调用异步 API 后，便继续执行自己的任务。AsynchronousOperationProcessor 会开启独立的内核线程执行异步操作，实现真正的异步。当异步IO操作完成时，AsynchronousOperationProcessor 将用户线程与 AsynchronousOperation 一起注册的 Proactor 和 CompletionHandler 取出，然后将 CompletionHandler 与 IO 操作的结果数据一起转发给 Proactor，Proactor 负责回调每一个异步操作的事件完成处理函数 handle_event。虽然 Proactor 模式中每个异步操作都可以绑定一个 Proactor 对象，但是一般在操作系统中，Proactor 被实现为 Singleton 模式，以便于集中化分发操作完成事件。<br><img src="http://img.blog.csdn.net/20160110130714694?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQv/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt="此处输入图片的描述"></p>
+<p>  如图所示，异步 IO 模型中，用户线程直接使用内核提供的异步 IO API 发起 read 请求，且发起后立即返回，继续执行用户线程代码。不过此时用户线程已经将调用的 AsynchronousOperation 和 CompletionHandler 注册到内核，然后操作系统开启独立的内核线程去处理 IO 操作。当 read 请求的数据到达时，由内核负责读取 socket 中的数据，并写入用户指定的缓冲区中。最后内核将 read 的数据和用户线程注册的 CompletionHandler 分发给内部 Proactor，Proactor 将 IO 完成的信息通知给用户线程（一般通过调用用户线程注册的完成事件处理函数），完成异步 IO。<br>用户线程使用异步 IO 模型的伪代码描述为：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> UserCompletionHandler::handle_event(buffer)</span><br><span class="line"> &#123;</span><br><span class="line"></span><br><span class="line">    process(buffer);</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#123;</span><br><span class="line"></span><br><span class="line">    aio_read(socket,newUserCompletionHandler);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>用户需要重写 CompletionHandler 的 handle_event 函数进行处理数据的工作，参数 buffer 表示 Proactor 已经准备好的数据，用户线程直接调用内核提供的异步 IO API，并将重写的 CompletionHandler 注册即可。<br>到目前为止，已经将四个 IO 模型都介绍完了。现在回过头来回答最初的那几个问题：blocking 和 non-blocking 的区别在哪，synchronous IO 和 asynchronous IO 的区别在哪。<br>blocking 与 non-blocking。调用 blocking IO 会一直 block 住对应的进程直到操作完成，而 non-blocking IO 在 kernel 还在准备数据的情况下会立刻返回。<br>在说明 synchronous IO 和 asynchronous IO 的区别之前，需要先给出两者的定义。Stevens 给出的定义（其实是 POSIX 的定义）是这样子的：</p>
+<ul>
+<li><ul>
+<li>A synchronous I/O operation causes the requesting process to be blocked until that I/O operation completes; </li>
+</ul>
+</li>
+<li><ul>
+<li>An asynchronous I/O operation does not cause the requesting process to be blocked;<br>两者的区别就在于 synchronous IO 做”IO operation”的时候会将 process 阻塞。按照这个定义，之前所述的 blocking IO，non-blocking IO，IO multiplexing 都属于 synchronous IO。有人可能会说，non-blocking IO 并没有被block啊。这里有个非常”狡猾”的地方，定义中所指的”IO operation”是指真实的IO操作，就是例子中的 recvfrom 这个系统调用。<strong>non-blocking IO 在执行 recvfrom 这个系统调用的时候，如果 kernel 的数据没有准备好，这时候不会 block 进程。但是当 kernel 中数据准备好的时候，recvfrom 会将数据从 kernel 拷贝到用户内存中，这个时候进程是被 block 了，在这段时间内进程是被 block 的</strong>。而 asynchronous IO 则不一样，当进程发起 IO 操作之后，就直接返回再也不理睬了，直到 kernel 发送一个信号，告诉进程说 IO 完成。在这整个过程中，进程完全没有被 block。<br>各个 IO Model 的比较如图所示：<br><img src="http://img.blog.csdn.net/20160110130746763?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQv/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt="此处输入图片的描述"></li>
+</ul>
+</li>
+</ul>
+<p>经过上面的介绍，会发现 non-blocking IO 和 asynchronous IO 的区别还是很明显的。在 non-blocking IO 中，虽然进程大部分时间都不会被 block，但是它仍然要求进程去主动的 check，并且当数据准备完成以后，也需要进程主动的再次调用 recvfrom 来将数据拷贝到用户内存。而 asynchronous IO 则完全不同。它就像是用户进程将整个 IO 操作交给了他人（kernel）完成，然后他人做完后发信号通知。在此期间，用户进程不需要去检查 IO 操作的状态，也不需要主动的去拷贝数据。</p>
+]]></content>
+    <summary type="html">
+    <![CDATA[<p>服务器端编程经常需要构造高性能的 IO 模型，常见的 IO 模型有四种：</p>
+<ul>
+<li>同步阻塞 IO（Blocking IO）：即传统的 IO 模型。</li>
+<li>同步非阻塞 IO（Non-blocking IO）：默认创建的 socket 都是阻塞的，]]>
+    </summary>
+    
+      <category term="IO" scheme="http://zhaodong.duapp.com/tags/IO/"/>
+    
+      <category term="Linux" scheme="http://zhaodong.duapp.com/tags/Linux/"/>
+    
+      <category term="性能" scheme="http://zhaodong.duapp.com/tags/%E6%80%A7%E8%83%BD/"/>
+    
+      <category term="网络" scheme="http://zhaodong.duapp.com/tags/%E7%BD%91%E7%BB%9C/"/>
+    
+      <category term="IO" scheme="http://zhaodong.duapp.com/categories/IO/"/>
+    
+      <category term="网络" scheme="http://zhaodong.duapp.com/categories/IO/%E7%BD%91%E7%BB%9C/"/>
+    
+      <category term="Linux" scheme="http://zhaodong.duapp.com/categories/IO/%E7%BD%91%E7%BB%9C/Linux/"/>
+    
+      <category term="性能" scheme="http://zhaodong.duapp.com/categories/IO/%E7%BD%91%E7%BB%9C/Linux/%E6%80%A7%E8%83%BD/"/>
+    
+  </entry>
+  
+  <entry>
+    <title><![CDATA[java中的锁]]></title>
+    <link href="http://zhaodong.duapp.com/2016/01/03/java%E4%B8%AD%E7%9A%84%E9%94%81/"/>
+    <id>http://zhaodong.duapp.com/2016/01/03/java中的锁/</id>
+    <published>2016-01-03T13:08:17.000Z</published>
+    <updated>2016-01-10T07:22:37.000Z</updated>
+    <content type="html"><![CDATA[<p>本文主要从，什么是锁，如何构建一个简单的锁，锁的可重入性，开展讲解~/blog-hexo/source/_posts</p>
+<h3 id="什么是锁">什么是锁</h3><p>锁像synchronized同步块一样，是一种线程同步机制，但比Java中的synchronized同步块更复杂。因为锁（以及其它更高级的线程同步机制）是由synchronized同步块的方式实现的，所以我们还不能完全摆脱synchronized关键字（<br>自Java 5开始，java.util.concurrent.locks包中包含了一些锁的实现，因此你不用去实现自己的锁了。但是你仍然需要去了解怎样使用这些锁，且了解这些实现背后的理论也是很有用处的。可以参考我对java.util.concurrent.locks.Lock的介绍，以了解更多关于锁的信息。</p>
+<h3 id="一个简单的锁">一个简单的锁</h3><p>让我们从java中的一个同步块开始：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Counter</span></span>&#123;</span><br><span class="line">	<span class="keyword">private</span> <span class="keyword">int</span> count = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">inc</span><span class="params">()</span></span>&#123;</span><br><span class="line">		<span class="keyword">synchronized</span>(<span class="keyword">this</span>)&#123;</span><br><span class="line">			<span class="keyword">return</span> ++count;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>可以看到在inc()方法中有一个synchronized(this)代码块。该代码块可以保证在同一时间只有一个线程可以执行return ++count。虽然在synchronized的同步块中的代码可以更加复杂，但是++count这种简单的操作已经足以表达出线程同步的意思。</p>
+<p>以下的Counter类用Lock代替synchronized达到了同样的目的：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Counter</span></span>&#123;</span><br><span class="line">	<span class="keyword">private</span> Lock lock = <span class="keyword">new</span> Lock();</span><br><span class="line">	<span class="keyword">private</span> <span class="keyword">int</span> count = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">inc</span><span class="params">()</span></span>&#123;</span><br><span class="line">		lock.lock();</span><br><span class="line">		<span class="keyword">int</span> newCount = ++count;</span><br><span class="line">		lock.unlock();</span><br><span class="line">		<span class="keyword">return</span> newCount;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>lock()方法会对Lock实例对象进行加锁，因此所有对该对象调用lock()方法的线程都会被阻塞，直到该Lock对象的unlock()方法被调用。<br>这里有一个Lock类的简单实现：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Counter</span></span>&#123;</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Lock</span></span>&#123;</span><br><span class="line">	<span class="keyword">private</span> <span class="keyword">boolean</span> isLocked = <span class="keyword">false</span>;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">synchronized</span> <span class="keyword">void</span> <span class="title">lock</span><span class="params">()</span></span><br><span class="line">		<span class="keyword">throws</span> InterruptedException</span>&#123;</span><br><span class="line">		<span class="keyword">while</span>(isLocked)&#123;</span><br><span class="line">			wait();</span><br><span class="line">		&#125;</span><br><span class="line">		isLocked = <span class="keyword">true</span>;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">synchronized</span> <span class="keyword">void</span> <span class="title">unlock</span><span class="params">()</span></span>&#123;</span><br><span class="line">		isLocked = <span class="keyword">false</span>;</span><br><span class="line">		notify();</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>注意其中的while(isLocked)循环，它又被叫做“自旋锁”。自旋锁以及wait()和notify()方法在线程通信这篇文章中有更加详细的介绍。当isLocked为true时，调用lock()的线程在wait()调用上阻塞等待。为防止该线程没有收到notify()调用也从wait()中返回（也称作虚假唤醒），这个线程会重新去检查isLocked条件以决定当前是否可以安全地继续执行还是需要重新保持等待，而不是认为线程被唤醒了就可以安全地继续执行了。如果isLocked为false，当前线程会退出while(isLocked)循环，并将isLocked设回true，让其它正在调用lock()方法的线程能够在Lock实例上加锁。</p>
+<p>当线程完成了临界区（位于lock()和unlock()之间）中的代码，就会调用unlock()。执行unlock()会重新将isLocked设置为false，并且通知（唤醒）其中一个（若有的话）在lock()方法中调用了wait()函数而处于等待状态的线程。</p>
+<h3 id="锁的可重入性">锁的可重入性</h3><p>Java中的synchronized同步块是可重入的。这意味着如果一个java线程进入了代码中的synchronized同步块，并因此获得了该同步块使用的同步对象对应的管程上的锁，那么这个线程可以进入由同一个管程对象所同步的另一个java代码块。下面是一个例子：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Reentrant</span></span>&#123;</span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">synchronized</span> <span class="title">outer</span><span class="params">()</span></span>&#123;</span><br><span class="line">		inner();</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">synchronized</span> <span class="title">inner</span><span class="params">()</span></span>&#123;</span><br><span class="line">		<span class="comment">//do something</span></span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>调用inner()就没有什么问题，因为这两个方法（代码块）都由同一个管程对象（”this”)所同步。如果一个线程已经拥有了一个管程对象上的锁，那么它就有权访问被这个管程对象同步的所有代码块。这就是可重入。线程可以进入任何一个它已经拥有的锁所同步着的代码块。</p>
+<p>前面给出的锁实现不是可重入的。如果我们像下面这样重写Reentrant类，当线程调用outer()时，会在inner()方法的lock.lock()处阻塞住。<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Reentrant2</span></span>&#123;</span><br><span class="line">	Lock lock = <span class="keyword">new</span> Lock();</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="title">outer</span><span class="params">()</span></span>&#123;</span><br><span class="line">		lock.lock();</span><br><span class="line">		inner();</span><br><span class="line">		lock.unlock();</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">synchronized</span> <span class="title">inner</span><span class="params">()</span></span>&#123;</span><br><span class="line">		lock.lock();</span><br><span class="line">		<span class="comment">//do something</span></span><br><span class="line">		lock.unlock();</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>调用outer()的线程首先会锁住Lock实例，然后继续调用inner()。inner()方法中该线程将再一次尝试锁住Lock实例，结果该动作会失败（也就是说该线程会被阻塞），因为这个Lock实例已经在outer()方法中被锁住了。</p>
+<p>两次lock()之间没有调用unlock()，第二次调用lock就会阻塞，看过lock()实现后，会发现原因很明显：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Lock</span></span>&#123;</span><br><span class="line">	<span class="keyword">boolean</span> isLocked = <span class="keyword">false</span>;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">synchronized</span> <span class="keyword">void</span> <span class="title">lock</span><span class="params">()</span></span><br><span class="line">		<span class="keyword">throws</span> InterruptedException</span>&#123;</span><br><span class="line">		<span class="keyword">while</span>(isLocked)&#123;</span><br><span class="line">			wait();</span><br><span class="line">		&#125;</span><br><span class="line">		isLocked = <span class="keyword">true</span>;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>一个线程是否被允许退出lock()方法是由while循环（自旋锁）中的条件决定的。当前的判断条件是只有当isLocked为false时lock操作才被允许，而没有考虑是哪个线程锁住了它。</p>
+<p>为了让这个Lock类具有可重入性，我们需要对它做一点小的改动：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Lock</span></span>&#123;</span><br><span class="line">	<span class="keyword">boolean</span> isLocked = <span class="keyword">false</span>;</span><br><span class="line">	Thread  lockedBy = <span class="keyword">null</span>;</span><br><span class="line">	<span class="keyword">int</span> lockedCount = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">synchronized</span> <span class="keyword">void</span> <span class="title">lock</span><span class="params">()</span></span><br><span class="line">		<span class="keyword">throws</span> InterruptedException</span>&#123;</span><br><span class="line">		Thread callingThread =</span><br><span class="line">			Thread.currentThread();</span><br><span class="line">		<span class="keyword">while</span>(isLocked &amp;&amp; lockedBy != callingThread)&#123;</span><br><span class="line">			wait();</span><br><span class="line">		&#125;</span><br><span class="line">		isLocked = <span class="keyword">true</span>;</span><br><span class="line">		lockedCount++;</span><br><span class="line">		lockedBy = callingThread;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">synchronized</span> <span class="keyword">void</span> <span class="title">unlock</span><span class="params">()</span></span>&#123;</span><br><span class="line">		<span class="keyword">if</span>(Thread.curentThread() ==</span><br><span class="line">			<span class="keyword">this</span>.lockedBy)&#123;</span><br><span class="line">			lockedCount--;</span><br><span class="line"></span><br><span class="line">			<span class="keyword">if</span>(lockedCount == <span class="number">0</span>)&#123;</span><br><span class="line">				isLocked = <span class="keyword">false</span>;</span><br><span class="line">				notify();</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>注意到现在的while循环（自旋锁）也考虑到了已锁住该Lock实例的线程。如果当前的锁对象没有被加锁(isLocked = false)，或者当前调用线程已经对该Lock实例加了锁，那么while循环就不会被执行，调用lock()的线程就可以退出该方法（译者注：“被允许退出该方法”在当前语义下就是指不会调用wait()而导致阻塞）。</p>
+<p>除此之外，我们需要记录同一个线程重复对一个锁对象加锁的次数。否则，一次unblock()调用就会解除整个锁，即使当前锁已经被加锁过多次。在unlock()调用没有达到对应lock()调用的次数之前，我们不希望锁被解除。</p>
+<p>现在这个Lock类就是可重入的了。</p>
+<h3 id="锁的公平性">锁的公平性</h3><p>Java的synchronized块并不保证尝试进入它们的线程的顺序。因此，如果多个线程不断竞争访问相同的synchronized同步块，就存在一种风险，其中一个或多个线程永远也得不到访问权 —— 也就是说访问权总是分配给了其它线程。这种情况被称作线程饥饿。为了避免这种问题，锁需要实现公平性。本文所展现的锁在内部是用synchronized同步块实现的，因此它们也不保证公平性。饥饿和公平中有更多关于该内容的讨论。<br>在finally语句中调用unlock()<br>如果用Lock来保护临界区，并且临界区有可能会抛出异常，那么在finally语句中调用unlock()就显得非常重要了。这样可以保证这个锁对象可以被解锁以便其它线程能继续对其加锁。以下是一个示例：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">lock.lock();</span><br><span class="line"><span class="keyword">try</span>&#123;</span><br><span class="line">	<span class="comment">//do critical section code,</span></span><br><span class="line">	<span class="comment">//which may throw exception</span></span><br><span class="line">&#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">	lock.unlock();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>这个简单的结构可以保证当临界区抛出异常时Lock对象可以被解锁。如果不是在finally语句中调用的unlock()，当临界区抛出异常时，Lock对象将永远停留在被锁住的状态，这会导致其它所有在该Lock对象上调用lock()的线程一直阻塞</p>
+<blockquote>
+<p>转载自并发编程网 – ifeve.com</p>
+</blockquote>
+]]></content>
+    <summary type="html">
+    <![CDATA[<p>本文主要从，什么是锁，如何构建一个简单的锁，锁的可重入性，开展讲解~/blog-hexo/source/_posts</p>
+<h3 id="什么是锁">什么是锁</h3><p>锁像synchronized同步块一样，是一种线程同步机制，但比Java中的synchroniz]]>
+    </summary>
+    
+      <category term="java" scheme="http://zhaodong.duapp.com/tags/java/"/>
+    
+      <category term="多线程" scheme="http://zhaodong.duapp.com/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/"/>
+    
+      <category term="并发" scheme="http://zhaodong.duapp.com/tags/%E5%B9%B6%E5%8F%91/"/>
+    
+      <category term="锁" scheme="http://zhaodong.duapp.com/tags/%E9%94%81/"/>
+    
+      <category term="java" scheme="http://zhaodong.duapp.com/categories/java/"/>
+    
+      <category term="多线程" scheme="http://zhaodong.duapp.com/categories/java/%E5%A4%9A%E7%BA%BF%E7%A8%8B/"/>
+    
+      <category term="并发" scheme="http://zhaodong.duapp.com/categories/java/%E5%A4%9A%E7%BA%BF%E7%A8%8B/%E5%B9%B6%E5%8F%91/"/>
+    
+      <category term="锁" scheme="http://zhaodong.duapp.com/categories/java/%E5%A4%9A%E7%BA%BF%E7%A8%8B/%E5%B9%B6%E5%8F%91/%E9%94%81/"/>
+    
+  </entry>
+  
+  <entry>
+    <title><![CDATA[如何正确的关闭一个线程]]></title>
+    <link href="http://zhaodong.duapp.com/2015/12/09/%E5%A6%82%E4%BD%95%E6%AD%A3%E7%A1%AE%E7%9A%84%E5%85%B3%E9%97%AD%E4%B8%80%E4%B8%AA%E7%BA%BF%E7%A8%8B/"/>
+    <id>http://zhaodong.duapp.com/2015/12/09/如何正确的关闭一个线程/</id>
+    <published>2015-12-09T14:38:26.000Z</published>
+    <updated>2016-01-10T07:21:20.000Z</updated>
+    <content type="html"><![CDATA[<p>与此问题相关的内容主要涉及三部分：已废弃的Thread.stop()、迷惑的thread.interrupt系列、最佳实践Shared Variable</p>
+<h2 id="已废弃的Thread-stop()">已废弃的Thread.stop()</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="annotation">@Deprecated</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">void</span> <span class="title">stop</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    stop(<span class="keyword">new</span> ThreadDeath());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>如上是Hotspot JDK 7中的java.lang.Thread.stop()的代码，学习一下它的doc：</p>
+<blockquote>
+<p>该方法天生是不安全的。使用thread.stop()停止一个线程，导致释放（解锁）所有该线程已经锁定的监视器（因沿堆栈向上传播的未检查异常ThreadDeath而解锁）。如果之前受这些监视器保护的任何对象处于不一致状态，则不一致状态的对象（受损对象）将对其他线程可见，这可能导致任意的行为。</p>
+</blockquote>
+<p>是不是差点被这段话绕晕，俗点说：目标线程可能持有一个监视器，假设这个监视器控制着某两个值之间的逻辑关系，如var1必须小于var2，某一时刻var1等于var2，本来应该受保护的逻辑关系，不幸的是此时恰好收到一个stop命令，产生一个ThreadDeath错误，监视器被解锁。这就导致逻辑错误，当然这种情况也可能不会发生，是不可预料的。注意：ThreadDeath是何方神圣？是个java.lang.Error，不是java.lang.Exception。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ThreadDeath</span> <span class="keyword">extends</span> <span class="title">Error</span> </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">long</span> serialVersionUID = -<span class="number">4417128565033088268L</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>thread.stop()方法的许多应用应该由“只修改某些变量以指示目标线程应该停止”的代码取代。目标线程应周期性的检查该变量，当发现该变量指示其要停止运行，则退出run方法。如果目标线程等待很长时间，则应该使用interrupt方法中断该等待。</p>
+</blockquote>
+<p>其实这里已经暗示停止一个线程的最佳方法：<em>条件变量</em> 或 <em>条件变量+中断</em>。</p>
+<blockquote>
+<p>更多请查看：<br><a href="http://docs.oracle.com/javase/7/docs/technotes/guides/concurrency/threadPrimitiveDeprecation.html" target="_blank" rel="external">Why are Thread.stop, Thread.suspend and Thread.resume Deprecated?</a></p>
+</blockquote>
+<p>其它关于stop方法的doc：</p>
+<blockquote>
+<ul>
+<li>该方法强迫停止一个线程，并抛出一个新创建的ThreadDeath对象作为异常。</li>
+<li>停止一个尚未启动的线程是允许的，如果稍后启动该线程，它会立即终止。</li>
+<li>通常不应试图捕获ThreadDeath，除非它必须执行某些异常的清除操作。如果catch子句捕获了一个ThreadDeath对象，则必须重新抛出该对象，这样该线程才会真正终止。</li>
+</ul>
+</blockquote>
+<h2 id="小结：">小结：</h2><p>Thread.stop()不安全，已不再建议使用。</p>
+<h2 id="令人迷惑的thread-interrupt()">令人迷惑的thread.interrupt()</h2><p>Thread类中有三个方法会令新手迷惑，他们是：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> Thread.interrupt() <span class="comment">// 无返回值</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">boolean</span> Thread.isInterrupted() <span class="comment">// 有返回值</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">boolean</span> Thread.interrupted() <span class="comment">// 静态，有返回值</span></span><br></pre></td></tr></table></figure></p>
+<p>如果按照近几年流行的<a href="http://book.douban.com/subject/4199741/" target="_blank" rel="external">重构，代码整洁之道，程序员修炼之道</a>等书的观点，这几个方法的命名相对于其实现的功能来说，不够直观明确，极易令人混淆，是低级程序猿的代码。逐个分析：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">interrupt</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (<span class="keyword">this</span> != Thread.currentThread())</span><br><span class="line">        checkAccess();</span><br><span class="line">    <span class="keyword">synchronized</span> (blockerLock) &#123;</span><br><span class="line">        Interruptible b = blocker;</span><br><span class="line">        <span class="keyword">if</span> (b != <span class="keyword">null</span>) &#123;</span><br><span class="line">            interrupt0();        <span class="comment">// Just to set the interrupt flag</span></span><br><span class="line">            b.interrupt(<span class="keyword">this</span>);</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    interrupt0();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>中断本线程。无返回值。具体作用分以下几种情况：</p>
+<ul>
+<li>如果该线程正阻塞于Object类的wait()、wait(long)、wait(long, int)方法，或者Thread类的join()、join(long)、join(long, int)、sleep(long)、sleep(long, int)方法，则该线程的中断状态将被清除，并收到一个java.lang.InterruptedException。</li>
+<li>如果该线程正阻塞于interruptible channel上的I/O操作，则该通道将被关闭，同时该线程的中断状态被设置，并收到一个java.nio.channels.ClosedByInterruptException。</li>
+<li>如果该线程正阻塞于一个java.nio.channels.Selector操作，则该线程的中断状态被设置，它将立即从选择操作返回，并可能带有一个非零值，就好像调用java.nio.channels.Selector.wakeup()方法一样。</li>
+<li>如果上述条件都不成立，则该线程的中断状态将被设置。<blockquote>
+<p>小结：第一种情况最为特殊，阻塞于wait/join/sleep的线程，中断状态会被清除掉，同时收到著名的InterruptedException；而其他情况中断状态都被设置，并不一定收到异常。</p>
+</blockquote>
+</li>
+</ul>
+<p>中断一个不处于活动状态的线程不会有任何作用。如果是其他线程在中断该线程，则java.lang.Thread.checkAccess()方法就会被调用，这可能抛出java.lang.SecurityException。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">boolean</span> <span class="title">interrupted</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> currentThread().isInterrupted(<span class="keyword">true</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>检测当前线程是否已经中断，是则返回true，否则false，<em>并清除中断状态</em>。换言之，如果该方法被连续调用两次，第二次必将返回false，除非在第一次与第二次的瞬间线程再次被中断。如果中断调用时线程已经不处于活动状态，则返回false。<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">isInterrupted</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> isInterrupted(<span class="keyword">false</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>检测当前线程是否已经中断，是则返回true，否则false。中断状态不受该方法的影响。如果中断调用时线程已经不处于活动状态，则返回false。</p>
+<blockquote>
+<p>interrupted()与isInterrupted()的唯一区别是，前者会读取并清除中断状态，后者仅读取状态</p>
+</blockquote>
+<p>在hotspot源码中，两者均通过调用的native方法isInterrupted(boolean)来实现，区别是参数值ClearInterrupted不同。<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">native</span> <span class="keyword">boolean</span> <span class="title">isInterrupted</span><span class="params">(<span class="keyword">boolean</span> ClearInterrupted)</span></span>;</span><br></pre></td></tr></table></figure></p>
+<p>经过上面的分析，三者之间的区别已经很明确，来看一个具体案例，是我在工作中看到某位架构师的代码，只给出最简单的概要结构：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  <span class="keyword">while</span>(!Thread.currentThread().isInterrupted()) &#123;</span><br><span class="line">      <span class="keyword">try</span> &#123;</span><br><span class="line">           Thread.sleep(<span class="number">10000L</span>);</span><br><span class="line">           ... <span class="comment">//为篇幅，省略其它io操作</span></span><br><span class="line">           ... <span class="comment">//为简单，省略其它interrupt操作</span></span><br><span class="line">      &#125; <span class="keyword">catch</span> (InterruptedException e) &#123; <span class="keyword">break</span>; &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>我最初被这段代码直接绕晕，用thread.isInterrupted()方法作为循环中止条件可以吗？</p>
+<p>根据上文的分析，当该方法阻塞于wait/join/sleep时，中断状态会被清除掉，同时收到InterruptedException，也就是接收到的值为false。上述代码中，当sleep之后的调用otherDomain.xxx()，otherDomain中的代码包含wait/join/sleep并且InterruptedException被catch掉的时候，线程无法正确的中断。</p>
+<p>因此，在编写多线程代码的时候，任何时候捕获到InterruptedException，要么继续上抛，要么重置中断状态，这是最安全的做法，参考<a href="http://book.douban.com/subject/1888733/" target="_blank" rel="external">『Java Concurrency in Practice』</a>。凡事没有绝对，如果你可以确保一定没有这种情况发生，这个代码也是可以的。</p>
+<blockquote>
+<p>下段内容引自：<a href="http://book.douban.com/subject/10484692/" target="_blank" rel="external">『Java并发编程实战』</a> 第5章 基础构建模块 5.4 阻塞方法与中断方法 p77</p>
+</blockquote>
+<p>当某个方法抛出InterruptedException时，表示该方法是一个阻塞方法。当在代码中调用一个将抛出InterruptedException异常的方法时，你自己的方法也就变成了一个阻塞方法，并且必须要处理对中断的相应。对于库代码来说，有两种选择：</p>
+<ul>
+<li>传递InterruptedException。这是最明智的策略，将异常传递给方法的调用者。</li>
+<li>恢复中断。在不能上抛的情况下，如Runnable方法，必须捕获InterruptedException，并通过当前线程的interrupt()方法恢复中断状态，这样在调用栈中更高层的代码将看到引发了一个中断。如下代码是模板</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">          <span class="comment">// ① 调用阻塞方法</span></span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">            Thread.currentThread().interrupt();    <span class="comment">// ② 恢复被中断的状态</span></span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>最后再强调一遍，②处的 Thread.currentThread().interrupt() 非常非常重要</p>
+<h2 id="最佳实践：Shared_Variable">最佳实践：Shared Variable</h2><p>不记得哪本书上曾曰过，最佳实践是个烂词。在这里这个词最能表达意思，停止一个线程最好的做法就是利用共享的条件变量。</p>
+<p>对于本问题，我认为准确的说法是：<em>停止一个线程的最佳方法是让它执行完毕，没有办法立即停止一个线程，但你可以控制何时或什么条件下让他执行完毕</em></p>
+<p>通过条件变量控制线程的执行，线程内部检查变量状态，外部改变变量值可控制停止执行。为保证线程间的即时通信，需要使用使用volatile关键字或锁，确保读线程与写线程间变量状态一致。下面给一个最佳模板：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span><br><span class="line"> * <span class="doctag">@author</span> bruce_sha (bruce-sha.github.io)</span><br><span class="line"> * <span class="doctag">@version</span> 2013-12-23</span><br><span class="line"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">BestPractice</span> <span class="keyword">extends</span> <span class="title">Thread</span> </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">volatile</span> <span class="keyword">boolean</span> finished = <span class="keyword">false</span>;   <span class="comment">// ① volatile条件变量</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">stopMe</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        finished = <span class="keyword">true</span>;    <span class="comment">// ② 发出停止信号</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="annotation">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">while</span> (!finished) &#123;    <span class="comment">// ③ 检测条件变量</span></span><br><span class="line">            <span class="comment">// do dirty work   // ④业务代码</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>当④处的代码阻塞于wait()或sleep()时，线程不能立刻检测到条件变量。因此②处的代码最好同时调用interrupt()方法。</p>
+<p>小结：<br><a href="http://forward.com.au/javaProgramming/HowToStopAThread.html" target="_blank" rel="external">How to Stop a Thread or a Task ?</a> 详细讨论了如何停止一个线程, 总结起来有三点：</p>
+<ul>
+<li>使用violate boolean变量来标识线程是否停止。</li>
+<li>停止线程时，需要调用停止线程的interrupt()方法，因为线程有可能在wait()或sleep(), 提高停止线程的即时性。</li>
+<li>对于blocking IO的处理，尽量使用InterruptibleChannel来代替blocking IO。</li>
+</ul>
+<h2 id="总结：">总结：</h2><blockquote>
+<p>要使任务和线程能安全、快速、可靠地停止下来，并不是一件容易的事。Java没有提供任何机制来安全地终止线程。但它提供了中断（Interruption），这是一种协作机制，能够使一个线程终止另一个线程的的工作。—— <a href="http://book.douban.com/subject/10484692/" target="_blank" rel="external">『Java并发编程实战』</a> 第7章 取消与关闭 p111<br>中断是一种协作机制。一个线程不能强制其它线程停止正在执行的操作而去执行其它的操作。当线程A中断B时，A仅仅是要求B在执行到某个可以暂停的地方停止正在执行的操作——前提是如果线程B愿意停下来。—— <a href="http://book.douban.com/subject/10484692/" target="_blank" rel="external">『Java并发编程实战』</a> 第5章 基础构建模块 p77</p>
+</blockquote>
+<p>总之，中断只是一种协作机制，需要被中断的线程自己处理中断。停止一个线程最佳实践是 中断 + 条件变量。</p>
+<h2 id="参考文献">参考文献</h2><ul>
+<li><a href="http://docs.oracle.com/javase/7/docs/technotes/guides/concurrency/threadPrimitiveDeprecation.html" target="_blank" rel="external">Why are Thread.stop, Thread.suspend and Thread.resume Deprecated ?</a></li>
+<li><a href="http://www.infoq.com/cn/articles/java-interrupt-mechanism" target="_blank" rel="external">详细分析Java中断机制</a></li>
+<li><a href="http://stackoverflow.com/questions/3194545/how-to-stop-a-java-thread-gracefully" target="_blank" rel="external">How to stop a java thread gracefully ?</a></li>
+<li><a href="http://forward.com.au/javaProgramming/HowToStopAThread.html" target="_blank" rel="external">How to Stop a Thread or a Task ?</a></li>
+<li><a href="http://yeziwang.iteye.com/blog/844649" target="_blank" rel="external">为什么不能使用Thread.stop()方法？</a></li>
+<li><a href="http://blog.csdn.net/dlite/article/details/4212915" target="_blank" rel="external">为什么 Thread.stop和Thread.suspend等被废弃了？</a></li>
+</ul>
+]]></content>
+    <summary type="html">
+    <![CDATA[<p>与此问题相关的内容主要涉及三部分：已废弃的Thread.stop()、迷惑的thread.interrupt系列、最佳实践Shared Variable</p>
+<h2 id="已废弃的Thread-stop()">已废弃的Thread.stop()</h2><figure]]>
+    </summary>
+    
+      <category term="java" scheme="http://zhaodong.duapp.com/tags/java/"/>
+    
+      <category term="多线程" scheme="http://zhaodong.duapp.com/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/"/>
+    
+      <category term="java" scheme="http://zhaodong.duapp.com/categories/java/"/>
+    
+      <category term="多线程" scheme="http://zhaodong.duapp.com/categories/java/%E5%A4%9A%E7%BA%BF%E7%A8%8B/"/>
+    
+  </entry>
+  
+  <entry>
+    <title><![CDATA[深入java单例模式]]></title>
+    <link href="http://zhaodong.duapp.com/2015/12/06/%E6%B7%B1%E5%85%A5java%E5%8D%95%E4%BE%8B%E6%A8%A1%E5%BC%8F/"/>
+    <id>http://zhaodong.duapp.com/2015/12/06/深入java单例模式/</id>
+    <published>2015-12-05T16:05:34.000Z</published>
+    <updated>2016-01-10T07:21:35.000Z</updated>
+    <content type="html"><![CDATA[<h3 id="单例模式简介">单例模式简介</h3><p>在GoF的23种设计模式中，单例模式是比较简单的一种。然而，有时候越是简单的东西越容易出现问题。下面就单例设计模式详细的探讨一下。<br>所谓单例模式，简单来说，就是在整个应用中保证只有一个类的实例存在。就像是Java Web中的application，也就是提供了一个全局变量，用处相当广泛，比如保存全局数据，实现全局性的操作等。</p>
+<h3 id="1-_最简单的实现">1. 最简单的实现</h3><p>首先，能够想到的最简单的实现是，把类的构造函数写成private的，从而保证别的类不能实例化此类，然后在类中提供一个静态的实例并能够返回给使用者。这样，使用者就可以通过这个引用使用到这个类的实例了。<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SingletonClass</span> </span>&#123; </span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> SingletonClass instance = <span class="keyword">new</span> SingletonClass(); </span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> SingletonClass <span class="title">getInstance</span><span class="params">()</span> </span>&#123; </span><br><span class="line">    <span class="keyword">return</span> instance; </span><br><span class="line">  &#125; </span><br><span class="line">  <span class="function"><span class="keyword">private</span> <span class="title">SingletonClass</span><span class="params">()</span> </span>&#123; </span><br><span class="line">     </span><br><span class="line">  &#125; </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>如上例，外部使用者如果需要使用SingletonClass的实例，只能通过getInstance()方法，并且它的构造方法是private的，这样就保证了只能有一个对象存在。</p>
+<h3 id="2-_性能优化——lazy_loaded">2. 性能优化——lazy loaded</h3><p>上面的代码虽然简单，但是有一个问题——无论这个类是否被使用，都会创建一个instance对象。如果这个创建过程很耗时，比如需要连接10000次数据库(夸张了…:-))，并且这个类还并不一定会被使用，那么这个创建过程就是无用的。怎么办呢？<br>为了解决这个问题，我们想到了新的解决方案：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SingletonClass</span> </span>&#123; </span><br><span class="line"></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> SingletonClass instance = <span class="keyword">null</span>; </span><br><span class="line">    </span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> SingletonClass <span class="title">getInstance</span><span class="params">()</span> </span>&#123; </span><br><span class="line">    <span class="keyword">if</span>(instance == <span class="keyword">null</span>) &#123; </span><br><span class="line">      instance = <span class="keyword">new</span> SingletonClass(); </span><br><span class="line">    &#125; </span><br><span class="line">    <span class="keyword">return</span> instance; </span><br><span class="line">  &#125; </span><br><span class="line">  <span class="function"><span class="keyword">private</span> <span class="title">SingletonClass</span><span class="params">()</span> </span>&#123; </span><br><span class="line">  &#125; </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>代码的变化有两处——首先，把instance初始化为null，直到第一次使用的时候通过判断是否为null来创建对象。因为创建过程不在声明处，所以那个final的修饰必须去掉。</p>
+<p>我们来想象一下这个过程。要使用SingletonClass，调用getInstance()方法。第一次的时候发现instance是null，然后就新建一个对象，返回出去；第二次再使用的时候，因为这个instance是static的，所以已经不是null了，因此不会再创建对象，直接将其返回。<br>这个过程就成为lazy loaded，也就是迟加载——直到使用的时候才进行加载。</p>
+<h3 id="3-_同步">3. 同步</h3><p>上面的代码很清楚，也很简单。然而就像那句名言：“80%的错误都是由20%代码优化引起的”。单线程下，这段代码没有什么问题，可是如果是多线程，麻烦就来了。我们来分析一下：</p>
+<p>线程A希望使用SingletonClass，调用getInstance()方法。因为是第一次调用，A就发现instance是null的，于是它开始创建实例，就在这个时候，CPU发生时间片切换，线程B开始执行，它要使用SingletonClass，调用getInstance()方法，同样检测到instance是null——注意，这是在A检测完之后切换的，也就是说A并没有来得及创建对象——因此B开始创建。B创建完成后，切换到A继续执行，因为它已经检测完了，所以A不会再检测一遍，它会直接创建对象。这样，线程A和B各自拥有一个SingletonClass的对象——单例失败！</p>
+<p>解决的方法也很简单，那就是加锁：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SingletonClass</span> </span>&#123; </span><br><span class="line"></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> SingletonClass instance = <span class="keyword">null</span>; </span><br><span class="line">    </span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">synchronized</span> <span class="keyword">static</span> SingletonClass <span class="title">getInstance</span><span class="params">()</span> </span>&#123; </span><br><span class="line">    <span class="keyword">if</span>(instance == <span class="keyword">null</span>) &#123; </span><br><span class="line">      instance = <span class="keyword">new</span> SingletonClass(); </span><br><span class="line">    &#125; </span><br><span class="line">    <span class="keyword">return</span> instance; </span><br><span class="line">  &#125; </span><br><span class="line">    </span><br><span class="line">  <span class="function"><span class="keyword">private</span> <span class="title">SingletonClass</span><span class="params">()</span> </span>&#123; </span><br><span class="line">     </span><br><span class="line">  &#125; </span><br><span class="line">    </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>是要getInstance()加上同步锁，一个线程必须等待另外一个线程创建完成后才能使用这个方法，这就保证了单例的唯一性。</p>
+<h3 id="4-_又是性能">4. 又是性能</h3><p>上面的代码又是很清楚很简单的，然而，简单的东西往往不够理想。这段代码毫无疑问存在性能的问题——synchronized修饰的同步块可是要比一般的代码段慢上几倍的！如果存在很多次getInstance()的调用，那性能问题就不得不考虑了！</p>
+<p>让我们来分析一下，究竟是整个方法都必须加锁，还是仅仅其中某一句加锁就足够了？我们为什么要加锁呢？分析一下出现lazy loaded的那种情形的原因。原因就是检测null的操作和创建对象的操作分离了。如果这两个操作能够原子地进行，那么单例就已经保证了。于是，我们开始修改代码：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SingletonClass</span> </span>&#123; </span><br><span class="line"></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> SingletonClass instance = <span class="keyword">null</span>; </span><br><span class="line">    </span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> SingletonClass <span class="title">getInstance</span><span class="params">()</span> </span>&#123; </span><br><span class="line">    <span class="keyword">synchronized</span> (SingletonClass.class) &#123; </span><br><span class="line">      <span class="keyword">if</span>(instance == <span class="keyword">null</span>) &#123; </span><br><span class="line">        instance = <span class="keyword">new</span> SingletonClass(); </span><br><span class="line">      &#125; </span><br><span class="line">    &#125;     </span><br><span class="line">    <span class="keyword">return</span> instance; </span><br><span class="line">  &#125; </span><br><span class="line">    </span><br><span class="line">  <span class="function"><span class="keyword">private</span> <span class="title">SingletonClass</span><span class="params">()</span> </span>&#123; </span><br><span class="line">     </span><br><span class="line">  &#125; </span><br><span class="line">    </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>首先去掉getInstance()的同步操作，然后把同步锁加载if语句上。但是这样的修改起不到任何作用：因为每次调用getInstance()的时候必然要同步，性能问题还是存在。如果……如果我们事先判断一下是不是为null再去同步呢？<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SingletonClass</span> </span>&#123; </span><br><span class="line"></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> SingletonClass instance = <span class="keyword">null</span>; </span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> SingletonClass <span class="title">getInstance</span><span class="params">()</span> </span>&#123; </span><br><span class="line">    <span class="keyword">if</span> (instance == <span class="keyword">null</span>) &#123; </span><br><span class="line">      <span class="keyword">synchronized</span> (SingletonClass.class) &#123; </span><br><span class="line">        <span class="keyword">if</span> (instance == <span class="keyword">null</span>) &#123; </span><br><span class="line">          instance = <span class="keyword">new</span> SingletonClass(); </span><br><span class="line">        &#125; </span><br><span class="line">      &#125; </span><br><span class="line">    &#125; </span><br><span class="line">    <span class="keyword">return</span> instance; </span><br><span class="line">  &#125; </span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">private</span> <span class="title">SingletonClass</span><span class="params">()</span> </span>&#123; </span><br><span class="line"></span><br><span class="line">  &#125; </span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>还有问题吗？首先判断instance是不是为null，如果为null，加锁初始化；如果不为null，直接返回instance。这就是double-checked locking设计实现单例模式。到此为止，一切都很完美。我们用一种很聪明的方式实现了单例模式。</p>
+<h3 id="5-_从源头检查">5. 从源头检查</h3><p>代码。编译原理里面有一个很重要的内容是编译器优化。所谓编译器优化是指，在不改变原来语义的情况下，通过调整语句顺序，来让程序运行的更快。这个过程成为reorder。</p>
+<p>要知道，JVM只是一个标准，并不是实现。JVM中并没有规定有关编译器优化的内容，也就是说，JVM实现可以自由的进行编译器优化。</p>
+<p>下面来想一下，创建一个变量需要哪些步骤呢？一个是申请一块内存，调用构造方法进行初始化操作，另一个是分配一个指针指向这块内存。这两个操作谁在前谁在后呢？JVM规范并没有规定。那么就存在这么一种情况，JVM是先开辟出一块内存，然后把指针指向这块内存，最后调用构造方法进行初始化。</p>
+<p>下面我们来考虑这么一种情况：线程A开始创建SingletonClass的实例，此时线程B调用了getInstance()方法，首先判断instance是否为null。按照我们上面所说的内存模型，A已经把instance指向了那块内存，只是还没有调用构造方法，因此B检测到instance不为null，于是直接把instance返回了——问题出现了，尽管instance不为null，但它并没有构造完成，就像一套房子已经给了你钥匙，但你并不能住进去，因为里面还没有收拾。此时，如果B在A将instance构造完成之前就是用了这个实例，程序就会出现错误了！</p>
+<p>于是，我们想到了下面的代码：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SingletonClass</span> </span>&#123; </span><br><span class="line"></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> SingletonClass instance = <span class="keyword">null</span>; </span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> SingletonClass <span class="title">getInstance</span><span class="params">()</span> </span>&#123; </span><br><span class="line">    <span class="keyword">if</span> (instance == <span class="keyword">null</span>) &#123; </span><br><span class="line">      SingletonClass sc; </span><br><span class="line">      <span class="keyword">synchronized</span> (SingletonClass.class) &#123; </span><br><span class="line">        sc = instance; </span><br><span class="line">        <span class="keyword">if</span> (sc == <span class="keyword">null</span>) &#123; </span><br><span class="line">          <span class="keyword">synchronized</span> (SingletonClass.class) &#123; </span><br><span class="line">            <span class="keyword">if</span>(sc == <span class="keyword">null</span>) &#123; </span><br><span class="line">              sc = <span class="keyword">new</span> SingletonClass(); </span><br><span class="line">            &#125; </span><br><span class="line">          &#125; </span><br><span class="line">          instance = sc; </span><br><span class="line">        &#125; </span><br><span class="line">      &#125; </span><br><span class="line">    &#125; </span><br><span class="line">    <span class="keyword">return</span> instance; </span><br><span class="line">  &#125; </span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">private</span> <span class="title">SingletonClass</span><span class="params">()</span> </span>&#123; </span><br><span class="line"></span><br><span class="line">  &#125; </span><br><span class="line">    </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>我们在第一个同步块里面创建一个临时变量，然后使用这个临时变量进行对象的创建，并且在最后把instance指针临时变量的内存空间。写出这种代码基于以下思想，即synchronized会起到一个代码屏蔽的作用，同步块里面的代码和外部的代码没有联系。因此，在外部的同步块里面对临时变量sc进行操作并不影响instance，所以外部类在instance=sc;之前检测instance的时候，结果instance依然是null。</p>
+<p>不过，这种想法完全是错误的！同步块的释放保证在此之前——也就是同步块里面——的操作必须完成，但是并不保证同步块之后的操作不能因编译器优化而调换到同步块结束之前进行。因此，编译器完全可以把instance=sc;这句移到内部同步块里面执行。这样，程序又是错误的了！</p>
+<h3 id="6-_解决方案">6. 解决方案</h3><p>说了这么多，难道单例没有办法在Java中实现吗？其实不然！<br>在JDK 5之后，Java使用了新的内存模型。volatile关键字有了明确的语义——在JDK1.5之前，volatile是个关键字，但是并没有明确的规定其用途——被volatile修饰的写变量不能和之前的读写代码调整，读变量不能和之后的读写代码调整！因此，只要我们简单的把instance加上volatile关键字就可以了。<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SingletonClass</span> </span>&#123; </span><br><span class="line"></span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">volatile</span> <span class="keyword">static</span> SingletonClass instance = <span class="keyword">null</span>; </span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> SingletonClass <span class="title">getInstance</span><span class="params">()</span> </span>&#123; </span><br><span class="line">    <span class="keyword">if</span> (instance == <span class="keyword">null</span>) &#123; </span><br><span class="line">      <span class="keyword">synchronized</span> (SingletonClass.class) &#123; </span><br><span class="line">        <span class="keyword">if</span>(instance == <span class="keyword">null</span>) &#123; </span><br><span class="line">          instance = <span class="keyword">new</span> SingletonClass(); </span><br><span class="line">        &#125; </span><br><span class="line">      &#125; </span><br><span class="line">    &#125; </span><br><span class="line">    <span class="keyword">return</span> instance; </span><br><span class="line">  &#125; </span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">private</span> <span class="title">SingletonClass</span><span class="params">()</span> </span>&#123; </span><br><span class="line"></span><br><span class="line">  &#125; </span><br><span class="line">    </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>然而，这只是JDK1.5之后的Java的解决方案，那之前版本呢？其实，还有另外的一种解决方案，并不会受到Java版本的影响：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SingletonClass</span> </span>&#123; </span><br><span class="line">    </span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">SingletonClassInstance</span> </span>&#123; </span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> SingletonClass instance = <span class="keyword">new</span> SingletonClass(); </span><br><span class="line">  &#125; </span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> SingletonClass <span class="title">getInstance</span><span class="params">()</span> </span>&#123; </span><br><span class="line">    <span class="keyword">return</span> SingletonClassInstance.instance; </span><br><span class="line">  &#125; </span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">private</span> <span class="title">SingletonClass</span><span class="params">()</span> </span>&#123; </span><br><span class="line"></span><br><span class="line">  &#125; </span><br><span class="line">    </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>在这一版本的单例模式实现代码中，我们使用了Java的静态内部类。这一技术是被JVM明确说明了的，因此不存在任何二义性。在这段代码中，因为SingletonClass没有static的属性，因此并不会被初始化。直到调用getInstance()的时候，会首先加载SingletonClassInstance类，这个类有一个static的SingletonClass实例，因此需要调用SingletonClass的构造方法，然后getInstance()将把这个内部类的instance返回给使用者。由于这个instance是static的，因此并不会构造多次。</p>
+<p>由于SingletonClassInstance是私有静态内部类，所以不会被其他类知道，同样，static语义也要求不会有多个实例存在。并且，JSL规范定义，类的构造必须是原子性的，非并发的，因此不需要加同步块。同样，由于这个构造是并发的，所以getInstance()也并不需要加同步。</p>
+<p>至此，我们完整的了解了单例模式在Java语言中的时候，提出了两种解决方案。个人偏向于第二种，并且Effiective Java也推荐的这种方式。<br>原文出处<a href="http://devbean.blog.51cto.com/448512/203501" target="_blank" rel="external">http://devbean.blog.51cto.com/448512/203501</a></p>
+<p>在这一版本的单例模式实现代码中，我们使用了Java的静态内部类。这一技术是被JVM明确说明了的，因此不存在任何二义性。在这段代码中，因为SingletonClass没有static的属性，因此并不会被初始化。直到调用getInstance()的时候，会首先加载SingletonClassInstance类，这个类有一个static的SingletonClass实例，因此需要调用SingletonClass的构造方法，然后getInstance()将把这个内部类的instance返回给使用者。由于这个instance是static的，因此并不会构造多次。</p>
+<p>由于SingletonClassInstance是私有静态内部类，所以不会被其他类知道，同样，static语义也要求不会有多个实例存在。并且，JSL规范定义，类的构造必须是原子性的，非并发的，因此不需要加同步块。同样，由于这个构造是并发的，所以getInstance()也并不需要加同步。</p>
+<p>至此，我们完整的了解了单例模式在Java语言中的时候，提出了两种解决方案。个人偏向于第二种，并且Effiective Java也推荐的这种方式。<br>原文出处<a href="http://devbean.blog.51cto.com/448512/203501" target="_blank" rel="external">http://devbean.blog.51cto.com/448512/203501</a></p>
+]]></content>
+    <summary type="html">
+    <![CDATA[<h3 id="单例模式简介">单例模式简介</h3><p>在GoF的23种设计模式中，单例模式是比较简单的一种。然而，有时候越是简单的东西越容易出现问题。下面就单例设计模式详细的探讨一下。<br>所谓单例模式，简单来说，就是在整个应用中保证只有一个类的实例存在。就像是Java ]]>
+    </summary>
+    
+      <category term="java" scheme="http://zhaodong.duapp.com/tags/java/"/>
+    
+      <category term="设计模式" scheme="http://zhaodong.duapp.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+    
+      <category term="java" scheme="http://zhaodong.duapp.com/categories/java/"/>
+    
+      <category term="设计模式" scheme="http://zhaodong.duapp.com/categories/java/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+    
+  </entry>
+  
+  <entry>
+    <title><![CDATA[技术文字]]></title>
+    <link href="http://zhaodong.duapp.com/2015/04/26/%E6%8A%80%E6%9C%AF%E6%96%87%E5%AD%97/"/>
+    <id>http://zhaodong.duapp.com/2015/04/26/技术文字/</id>
+    <published>2015-04-26T14:46:18.000Z</published>
+    <updated>2016-01-10T07:21:00.000Z</updated>
+    <content type="html"><![CDATA[<blockquote>
+<p>下面是我写给学弟们在学习路线上的一些建议，大家可以参考一下！希望能够帮助到大家，有写得不太合适的地方，<strong>还请大家指正</strong>！</p>
+</blockquote>
+<h3 id="一、基础">一、基础</h3><ul>
+<li>主要看《java核心技术：卷一》的重点章节</li>
+<li>掌握<code>java</code>常用技术，<code>io</code>、<code>多线程</code>、<code>反射</code>、常用<code>集合</code>框架</li>
+<li>数据结构看一遍，作用至少要清楚。如<code>hash</code>冲突解决办法，常用排序算法的应用场景和空间/时间复杂度等</li>
+<li>数据库，能看懂<code>ER</code>关系，熟悉数据库三大范式，熟练常用<code>SQL</code>语句</li>
+<li>可以掌握一点<code>java</code>网络编程方面的知识，对<code>tcp/ip</code>有初步的认识</li>
+<li>课程不能落下，专业课程（计算机网络，操作系统，数据结构，数据库，计算机组成原理）要好好学。<strong>不要挂科</strong></li>
+<li>学习<code>servlet/jsp</code>，至少能写简单的图书管理系统，熟悉核心<code>api</code></li>
+<li>了解前后端交互方式，<code>ajax</code>、<code>json/xml</code>至少知道，会使用<code>jquery</code>，<code>html</code>，<code>css</code>，<code>js</code>最好<h3 id="二、提高">二、提高</h3></li>
+<li>学习后端框架，<code>SpringMVC/Struts2</code>、<code>Mybatis</code>、<code>Spring</code>，熟悉<code>MVC</code>模式，知道三层架构及每一层之间的关系</li>
+<li>会用<code>chrome/firefox</code>浏览器分析<code>http</code>请求，解决、定位问题。知道常用http状态码，了解<code>TCP/IP</code>，知道一次<code>http</code>请求发生了哪些事情</li>
+<li>学习<code>设计模式</code>，<code>23</code>种设计模式都需要了解一点，熟悉常用的如：单例，工厂，模板，适配器，代理，责任链，构造器，装饰器，迭代器，策略，命令，观察者，外观，享元。理解他们的好处，可以找找在其他框架哪些用了这些设计模式。</li>
+<li>可以适当的看一些源码，<code>Spring</code>的源码可以着重的看一下。<code>tomcat</code>可以从源码的角度看看<code>tomcat</code>的整体设计方案，一次请求<code>tomcat</code>如何处理，<code>servlet</code>在<code>tomcat</code>中的加载，编译过程。tomcat自定义的<code>ClassLoader</code>有什么作用。</li>
+<li>会设计数据库，<code>多对多</code>，<code>一对多</code>，<code>迭代</code>，会写复杂的<code>SQL</code>，了解<code>SQL</code>调优，会写<code>存储过程</code>，<code>触发器</code>。熟悉<code>索引</code>的使用，了解<code>视图</code>。去了解一些常用<code>NOSQL</code>，比如<code>Redis/mongodb</code></li>
+<li>学习<code>Linux</code>，熟悉<code>基本命令</code>，学习一种<code>脚本</code>语言(<code>shell/python</code>)。会在<code>linux</code>下写脚本开发<h3 id="三、深入">三、深入</h3></li>
+<li><code>算法</code>，可以看看<code>编程之美</code>，<code>算法导论</code>。学习一些算法相关的知识</li>
+<li>深入<code>java</code>：理解<code>JVM</code>,<code>JMM</code>，<code>Classloader</code>，<code>GC</code>算法，<code>GC</code>收集器。学会定位<code>OOM</code>问题所在。</li>
+<li>源码分析，常用集合类如：<code>Hashmap</code>，<code>Arraylist</code>,<code>linkedList</code>，<code>HashSet</code>，<code>ConcurrentHashmap</code>等的源码分析，要非常熟悉<code>java</code>集合框架设计。最好能够分析一种框架源码，比如<code>Spring</code></li>
+<li>深入数据库，理解至少两种<code>数据库引擎</code>（<code>Inndb/Mysiam</code>）的差异性,熟悉索引的内部数据结构，熟悉常见的<code>索引方式（Btree，hash）</code>，和<code>索引类型（unique，full text,normal）</code>，会使用<code>explain</code>分析<code>SQL</code>语句，会优化<code>SQL</code>语句，熟悉一种<code>NOSQL</code>，知道内部实现原理（内部数据结构，在算法优化，内部机制）,掌握<code>分布式数据库</code>的知识，分表，分库，分区，分布式事务等，可以学习一个数据库中间件（<code>TDDL/COBAR</code>）</li>
+<li>架构设计，看看大型高流量/高并发的网站设计（CDN，异步，前端优化），了解缓存（分布式<code>memcached</code>/常用本地缓存），搜索引擎（<code>lucene/solr/elasticSearch</code>），分布式（<code>负载均衡/分布式数据库/分布式应用集群</code>）,消息队列（<code>ActiveMQ/Rabbitmq</code>）在大型网站中的作用</li>
+<li>还有一些其他的知识，如<code>RPC</code>框架，分布式服务架构，<code>SOA</code>,<code>REST</code>架构等等</li>
+<li>可以接触一些云计算方面的知识，如<code>Hadoop/Storm/Spark</code>等，要是再能接触一点<code>机器学习</code>就更棒啦(反正我是没有，听着就吓人，跑个kmeans算法都要弄死人，(<em>+﹏+</em>)逃</li>
+</ul>
+<p><img src="http://img.blog.csdn.net/20150426145737514" alt=""></p>
+<h3 id="我看过的书籍，留个参考！（当然没有全部掌握）">我看过的书籍，留个参考！（当然没有全部掌握）</h3><ul>
+<li>《深入分析Java Web技术内幕》<a href="http://weibo.com/u/1855869382?topnav=1&amp;wvr=6&amp;topsug=1" target="_blank" rel="external"><code>@淘宝君山</code></a>写的书，经历了taobao.com从一亿到十亿的pv变化（二面面试管么么哒(<em>+﹏+</em>)）</li>
+<li>《java编程思想》这个至今觉得一般，可能是功力还没有达到 (๑¯ิε ¯ิ๑)</li>
+<li>《java核心技术：卷一卷二》，对java入门非常不错，基本上涵盖了java很多知识</li>
+<li>《java并发编程实战》并发肯定要看这本书啦，从理论和实践上面讲得非常不错哦</li>
+<li>《编程之美》,《剑指offer》这两本本书不用说，刷<code>offer</code>必备</li>
+<li>《深入理解jvm虚拟机》看了这本书，基本上<code>JVM</code>相关的知识难不倒，唯一缺的就是实战经验</li>
+<li>《Spring技术内幕》比较透彻的解读了<code>spring</code>的源码，浅显易懂</li>
+<li>《大型网站技术架构》alibaba.com架构师<a href="http://weibo.com/itisaid" target="_blank" rel="external"><code>@李智慧</code></a>写的书,在大型网站架构方面有非常深刻的认识，我等膜拜</li>
+<li>《java设计模式》这本书一般般，主要看看大牛的博客</li>
+<li>《java网络编程》一般般，讲得不是很深，可以对io和网络有进一步的认识</li>
+<li>《java分布式应用：基础与实践》<code>@毕玄</code>写的书，大牛写的书都要膜拜</li>
+<li>《java数据结构与算法》外国人写的书，一般，不评价！用java实现了80%的数据结构</li>
+<li>《how tomcat works》在讲解<code>tomcat</code>的架构和设计模式方面讲得非常不错，虽然和现在的版本上有一些差别，但是影响不大</li>
+<li>《tcp/ip详解，卷一：协议》深入理解<code>tcp</code>。对<code>tcp</code>各个方面都有更加深刻的认识,正在看</li>
+<li>《hadoop技术内幕》可以<code>pass</code>掉，当时学习<code>hadoop</code>的时候看的书籍，讲解<code>hadoop</code>的源代码</li>
+<li>《算法导论》正在看，（逃，其实我也想做一个算法狗</li>
+</ul>
+<hr>
+<blockquote>
+<p>那么除了看书籍之外还有哪些学习方式呢？下面说说其他的学习方式</p>
+</blockquote>
+<ol>
+<li>参加开源项目/自己写点东西放在<code>GITHUB</code>上面，笔者我写了一个自己的<code>MVC</code>框架(<code>Dreamvc</code>),<code>github</code>地址-&gt;<a href="https://github.com/xiexiaodong" target="_blank" rel="external">点击</a>.另外可以去<code>fork</code>下其他人的开源项目，如果感兴趣就贡献一下，不感兴趣就学习别人的编码风格，去其糟粕！</li>
+<li>多看看大牛的博客，这里我列举一些<strong>大牛</strong>的博客<ul>
+<li><a href="http://blog.csdn.net/v_JULY_v" target="_blank" rel="external">结构之法，算法之道,<strong>july</strong>大神的博客</a></li>
+<li><a href="http://blog.csdn.net/xieyuooo" target="_blank" rel="external">xieyuooo的专栏，《java特种兵作者》</a></li>
+<li><a href="http://weibo.com/u/1921993171" target="_blank" rel="external">@兰亭风雨人任平生</a>|<a href="http://blog.csdn.net/ns_code?viewmode=list" target="_blank" rel="external">兰亭风雨的专栏, 目前人在腾讯，博客都写得很好，很深入！受益匪浅</a></li>
+<li><a href="http://thinkinginjavablog.sinaapp.com/" target="_blank" rel="external">机会永远留给有准备的人,享受编程和技术所带来的快乐（目前人在VMware）</a></li>
+<li><a href="http://blog.csdn.net/yangbutao?viewmode=list" target="_blank" rel="external">分布式架构、大数据、机器学习、搜索、推荐、广告</a></li>
+<li><a href="http://irfen.me/" target="_blank" rel="external">赵伊凡’s Blog，涉及各个领域</a></li>
+<li><a href="http://www.searchtb.com/" target="_blank" rel="external">搜索技术博客－淘宝，搜索团队的blog</a></li>
+<li><a href="http://www.liaoxuefeng.com/" target="_blank" rel="external">廖雪峰的官方网站,python就是跟着他学的</a></li>
+<li><a href="http://www.inbreak.net/" target="_blank" rel="external">空虚浪子心的灵魂,java安全，alibaba的安全专家</a></li>
+<li><a href="http://jm-blog.aliapp.com/" target="_blank" rel="external">阿里中间件团队博客，咱事业部的中间件，很厉害 (๑¯ิε ¯ิ๑)</a></li>
+<li><a href="http://www.ha97.com/" target="_blank" rel="external">服务器运维与网站架构|Linux运维|X研究,里面提到的技术都碉堡，博客质量也高。曾经memcached在哪里学到了很多</a></li>
+<li><a href="http://blog.sina.com.cn/s/blog_693f08470102vibt.html" target="_blank" rel="external">淘宝<strong>沈询</strong>_WhisperXD的博客,TDDL作者，ONS消息服务负责人，差点就跟着沈沈混了(•‾̑⌣‾̑•)✧˖° (๑´ڡ`๑) (๑¯ิε ¯ิ๑),在数据库方面强烈推荐</a></li>
+<li><a href="http://www.aminglinux.com/study_v2/index.html" target="_blank" rel="external">跟阿铭学Linux</a></li>
+<li><a href="http://mindhacks.cn/" target="_blank" rel="external"><strong>刘未鹏</strong> | MIND HACKS，这个大牛简直不要太叼</a></li>
+</ul>
+</li>
+<li>多上一些高质量的网站，下面我列举一些,<strong>每天</strong>都最好抽时间去走一遍<ul>
+<li><a href="https://github.com/" target="_blank" rel="external">GitHub,程序员不知道这个可以考虑转行了(๑´ڡ`๑)</a></li>
+<li><a href="http://blog.csdn.net/" target="_blank" rel="external">CSDN.中国最大的it交流网站</a></li>
+<li><a href="http://www.cnblogs.com/" target="_blank" rel="external">cnblogs,还是有很多资料的，里面也有大神</a></li>
+<li><a href="http://stackoverflow.com/" target="_blank" rel="external">Stack Overflow,问答网站，回答质量高</a></li>
+<li><a href="https://leetcode.com/problemset/algorithms/" target="_blank" rel="external"> LeetCode OJ,刷算法的oj</a></li>
+<li><a href="http://www.v2ex.com/" target="_blank" rel="external">V2EX,一个关于分享和探索的地方。</a></li>
+<li><a href="http://www.iteye.com/" target="_blank" rel="external">ITeye,前身为JavaEye。</a></li>
+<li><a href="http://ifeve.com/" target="_blank" rel="external">并发编程网，致力于促进并发编程研究和传播的垂直性技术网站。</a></li>
+<li><a href="http://www.ibm.com/developerworks/cn/" target="_blank" rel="external">IBM developerWorks 中国，里面有高质量的文章</a></li>
+<li><a href="http://www.oschina.net/" target="_blank" rel="external">开源中国，可以关注一些开源动态</a></li>
+<li><a href="http://ask.julyedu.com/" target="_blank" rel="external">7月算法,july的在线教育项目,主要是算法方面</a></li>
+<li><a href="http://www.infoq.com/cn/" target="_blank" rel="external">InfoQ,促进软件开发领域知识与创新的传播</a></li>
+</ul>
+</li>
+<li>关注一些技术类的微信号(晚上睡觉或者平时杂碎时间看)<a href="http://www.zhihu.com/people/Michael282694" target="_blank" rel="external">@michael282694的知乎</a>|<a href="http://michael282694.com/post/ji-zhu-lei-xiang-guan-wei-xin-gong-zhong-zhang-hao-he-wang-zhan" target="_blank" rel="external">cindy总结的 (๑¯ิε ¯ิ๑)，这是原地址</a><br>&gt;<br>部分参考：<a href="http://mp.weixin.qq.com/s?__biz=MzA4MjEyNTA5Mw==&amp;mid=204672969&amp;idx=1&amp;sn=a1e344f82224755ddb066abf30ad7dcd&amp;scene=5#rd" target="_blank" rel="external">推荐关注的微信公众号</a>。</li>
+</ol>
+<p><strong>36氪：wow36kr</strong></p>
+<ul>
+<li>功能介绍：36氪（<a href="http://36kr.com/" target="_blank" rel="external">36Kr.com</a>）是中国领先的科技新媒体，我们报道最新的互联网科技新闻以及最有潜力的互联网创业企业。</li>
+<li>账号主体：北京协力筑成传媒科技有限公司。</li>
+<li>商标保护：氪 36。</li>
+</ul>
+<p><strong>硅发布：guifabucom</strong></p>
+<ul>
+<li>功能介绍：这是硅发布网站的官方微信账号，我们在硅谷。</li>
+<li>来自新浪微博认证资料：<a href="www.guifabu.com">硅发布中文网</a>，官方微博 @<a href="http://weibo.com/guifabu" target="_blank" rel="external">硅发布中文网</a>。</li>
+</ul>
+<p><strong>虎嗅网：huxiu_com</strong></p>
+<ul>
+<li>功能介绍：有视角的商业资讯交流平台。</li>
+<li>账号主体：北京云觅信息科技有限公司。</li>
+</ul>
+<p><strong>InfoQ：infoqchina</strong></p>
+<ul>
+<li>功能介绍：关注中高端技术人员的社区媒体，促进软件开发领域知识与创新的传播。</li>
+<li>账号主体：北京创新网媒广告有限公司。</li>
+</ul>
+<p><strong>中文互联网数据研究资讯中心：i199it</strong></p>
+<ul>
+<li>功能介绍：发掘、分享数据价值，为您提供一个内容丰富的互联网数据咨询平台！网站（<a href="http://www.199it.com/" target="_blank" rel="external">199it.com</a>）、微博 @<a href="http://weibo.com/199it" target="_blank" rel="external">199IT-互联网数据中心</a>、大数据工具导航（<a href="http://hao.199it.com/" target="_blank" rel="external">hao.199it.com</a>），感谢您的关注。</li>
+<li>账号主体：北京思集智库科技有限公司。</li>
+</ul>
+<p><strong>伯乐在线：jobbole</strong></p>
+<ul>
+<li>功能介绍：关注职业资讯；学习各类职业感悟、心得和经验分享，扩大职业视野；体会求职、工作和创业的历程 - 就在<a href="http://www.jobbole.com/" target="_blank" rel="external">伯乐在线</a>。</li>
+<li>腾讯微博：来自腾讯微博认证资料：伯乐在线专注于个人职业发展和企业人才服务，提供一个互动、高校的人才服务平台。@伯乐在线</li>
+</ul>
+<p><strong>深蓝阅读：bluereader</strong></p>
+<ul>
+<li>功能介绍：深蓝阅读是专注于内容订阅的平台，可订阅RSS或任何网站链接，一切你关心的皆可订阅。官网网址：<a href="http://bluereader.org/" target="_blank" rel="external">bluereader.org</a>。</li>
+</ul>
+<p><strong>互联网er的早读课</strong></p>
+<ul>
+<li>功能介绍：专注互联网产品、用研、交互、设计、运营领域精选内容。信息爆炸的社会，每天用心的去读一篇文章，也许胜过你的走马观花。每早八点，我们等你。</li>
+<li>腾讯微博：来自腾讯微博认证资料：<a href="http://zaodula.com/" target="_blank" rel="external">互联网er的早读课</a>官方微博，专注产品、用研、交互，每天一篇，提供互联网人的慢阅读。 @<a href="http://weibo.com/u/5508827709" target="_blank" rel="external">互联网er的早读课</a></li>
+</ul>
+<p><strong>程序员：imkuqin</strong></p>
+<ul>
+<li>功能介绍：本微信公众号：imkuqin，为程序员提供最新最全的编程学习资料的查询。目前已经开通PHP、C/C++函数库、.NET Framework类库、J2SE API查询功能。</li>
+<li>新浪微博：来自新浪微博认证资料：IT程序猿（<a href="http://www.ithao123.com/" target="_blank" rel="external">ithao123.com</a>）官方微博 @<a href="http://weibo.com/kuqin" target="_blank" rel="external">IT程序猿</a>。</li>
+</ul>
+<p><strong>程序人生：programmer_life</strong></p>
+<ul>
+<li>功能介绍：十年慢慢程序人生，打过各种杂，也做过让我骄傲的软件；管理过十多人的团队，还带领一班兄弟姐妹创过业。关注程序人生，了解程序猿，学做程序猿，让我们的人生不再屌丝化。</li>
+</ul>
+<p><strong>程序员那些事：iProgrammer</strong></p>
+<ul>
+<li>功能介绍：最有影响力的程序员自媒体，关注程序员相关话题：IT技术、IT职场、在线课程、学习资源等。</li>
+<li>私人微信账号：myGuanguan，微博 @<a href="http://weibo.com/justcodeit" target="_blank" rel="external">程序员那些事</a>。</li>
+</ul>
+<p><strong>姑婆那些事儿：gupo520</strong></p>
+<ul>
+<li>功能介绍：有温度的互联网原创干货分享社区。关注网站推广运营，移动推广（android，ios）运营，在线教育，校园推广等话题。</li>
+</ul>
+<p><strong>数据库开发：DBDevs</strong></p>
+<ul>
+<li>功能介绍：分享数据库相关技术文章、教程和工具，另外还包括数据库相关的工作。偶尔也谈谈程序员人生:)</li>
+</ul>
+<p><strong>CPP开发者：cppFans</strong></p>
+<ul>
+<li>功能介绍：关注C和C++啦。</li>
+</ul>
+<p><strong>Python开发者：PythonCoder</strong></p>
+<ul>
+<li>人生苦短，我用Python。分享Python相关的技术文章、工具资源、精选课程、热点资讯等。</li>
+</ul>
+<p><strong>ImportNew：importnew</strong></p>
+<ul>
+<li>功能介绍：专注Java和Android技术分享。ImportNew由两个Java关键词Import和new组成。意指：Java &amp; Android程序员学习新知识的网站。</li>
+</ul>
+<p><strong>Linux爱好者：LinuxHub</strong></p>
+<ul>
+<li>功能介绍：分析Linux/Unix相关的技术文章、教程和工具。</li>
+</ul>
+<p><strong>Linux中国：linux-cn</strong></p>
+<ul>
+<li>功能介绍：面向Linux爱好者，提供Linux技术文章、新闻资讯和交流平台。每天推送一条最新精选Linux资讯和技术文章；支持Linux命令查询、Linux资讯搜索及微信群的交流。</li>
+<li>腾讯微博：来自腾讯微博认证资料：<a href="http://linux.cn/" target="_blank" rel="external">Linux中国</a>官方微博；专注于中文Linux技术、资讯的社区，在这里你可以获得一手的Linux资讯和技术知识。 @<a href="http://weibo.com/linuxcn" target="_blank" rel="external">Linux中国</a></li>
+</ul>
+<p><strong>Linux编程（添加朋友 → 公众号 → 搜索“Linux编程”，第一个黑色头像的就是）</strong></p>
+<ul>
+<li>功能介绍：每周两篇linux命令讲解，编程技巧或算法分析。</li>
+</ul>
+<p><strong>前端大全：FrontDev</strong></p>
+<ul>
+<li>功能介绍：分享Web前端相关的技术文章、工具资源、精选课程、热点资讯。</li>
+</ul>
+<p><strong>安卓应用开发：AndroidPD</strong></p>
+<ul>
+<li>功能介绍：分享安卓应用相关内容，包括：安卓应用开发、设计和推广。</li>
+</ul>
+<p><strong>iOS大全：iOShub</strong></p>
+<ul>
+<li>功能介绍：分享iOS和Mac相关的技术文章、工具资源、精选课程、热点资讯。</li>
+</ul>
+<p><strong>PHP开发者：PHPDevs</strong></p>
+<ul>
+<li>功能介绍：分享PHP相关的技术文章、工具资源、精选课程、资讯。</li>
+</ul>
+<p><strong>DotNet：iDotNet</strong></p>
+<ul>
+<li>功能介绍：专注分享.NET相关技术文章、教程和工具。有时也会涉及到IT职场相关的一些东西，或者来电幽默趣文。</li>
+</ul>
+<p><strong>设计的那些事：aboutDesigner</strong></p>
+<ul>
+<li>功能介绍：分享精选的设计相关文章、案例和行业动态。同时，也会不定期推荐设计教程、高薪职位和设计相关的优秀工具。</li>
+</ul>
+<p><strong>网页设计精选：BestWebDesign</strong></p>
+<ul>
+<li>功能介绍：分享网页设计精选文章、案例、行业趋势、课程和书籍。</li>
+</ul>
+<p><strong>UI设计达人：BestUIDesign</strong></p>
+<ul>
+<li>功能介绍：分享UI设计精选文章、案例、行业趋势、课程和书籍。</li>
+</ul>
+<p><strong>机器之心：almosthuman2014</strong></p>
+<ul>
+<li>功能介绍：人与科技的美好关系。</li>
+<li>私人微信账号：jiqizhixin2014。</li>
+</ul>
+<p><strong>统计之都：CapStat</strong></p>
+<ul>
+<li>功能介绍：专业、人本、正直的中国统计学门户网站。</li>
+</ul>
+<p><strong>数据挖掘：datadw</strong></p>
+<ul>
+<li>功能介绍：是唯一一个免费发送数据挖掘技术学习经验与咨询的公众号；关注大数据，数据分析，机器学习，电子商务最新动态，商务智能研究，最热营销案例解读，汇聚精粹，精选干货；数据分析/数据挖掘学习起来很困难？行业内专家有何经验或观点？这里的资源帮你解决！</li>
+</ul>
+<p><strong>数据挖掘菜鸟：data_bird</strong></p>
+<ul>
+<li>功能介绍：关注大数据，数据挖掘，机器学习，深度学习等人工智能领域。</li>
+</ul>
+<p><strong>大数据文摘：BigDataDigest</strong></p>
+<ul>
+<li>功能介绍：专注收集、分享大数据相关的案例、新闻，寻找志同道合的朋友合作、共赢。</li>
+<li>账号主体：深圳大数据文摘科技有限公司。</li>
+</ul>
+<p><strong>可视化之美：infovis</strong></p>
+<ul>
+<li>功能介绍：各种大数据、挖掘、可视化的知识和成果、科研与应用，原创及自行翻译内容为主。</li>
+</ul>
+<p><strong>数盟：DataScienceUnion</strong></p>
+<ul>
+<li>功能介绍：数盟致力于打造最卓越的数据科学交流平台，提倡“数据创造价值”，经常举办线上活动、线下活动、在线课程培训，同时数盟有专业的数据团队提供数据服务。官网：<a href="http://dataunion.org" target="_blank" rel="external">数盟社区 - 数据科学家联盟</a>，合作：<a href="mailto:contact@dataunion.org" target="_blank" rel="external">contact@dataunion.org</a>。</li>
+<li>账号主体：北京数盟科技有限公司。</li>
+</ul>
+<blockquote>
+<p>数盟【大数据群】 272089418，数盟【数据可视化群】 179287077。</p>
+</blockquote>
+<p><strong>数据挖掘与数据分析：datakong</strong></p>
+<ul>
+<li>功能介绍：以分析的视角为切入点，蕴含以互联网、移动互联、IT等科技领域为主的一体化综合型信息服务平台。商务合作，qq：2677585642。</li>
+</ul>
+<p><strong>大数据实验室：bigdatalab</strong></p>
+<ul>
+<li>功能介绍：宽客俱乐部旗下美国大数据实验室，大数据研究应用。</li>
+<li>账号主体：上海宽客投资管理有限公司。</li>
+</ul>
+<p><strong>SOTON数据分析：soton2014sky</strong></p>
+<ul>
+<li>功能介绍：Hi，我们是SOTON数据分析工作室，专注于带领大家零基础学习数据分析。在这里你将实现从菜鸟到专家的逾越。有梦想，出奇迹！</li>
+</ul>
+<p><strong>数据派：datapi</strong></p>
+<ul>
+<li>功能介绍：清华大学数据产业联合会（数据派）成员多为业内的清华校友。秉承“自强不息、行胜于言”，以扎实的理工功底闯荡“数据江湖”，独树一帜。本号旨在传播数据科学理念，分享数据运营心得，拓展数据应用空间，捕捉数据产业商机。在数据源，一切基于数据说话！</li>
+</ul>
+<p><strong>大数据邦：bigdatabang</strong></p>
+<ul>
+<li>功能介绍：深度分析大数据产业的资本、科技、商业价值。</li>
+</ul>
+<p><strong>R语言：Ryuyan360</strong></p>
+<ul>
+<li>功能介绍：【R语言】致力于传播R知识，包括【R每日一贴】、【R书籍推荐】，后续会推出【R那些事】、【R微课程】、【R案例分享】等栏目。R语言可以帮助我们获取数据、处理数据、分析数据、展示数据和理解数据，以进行数据化决策！</li>
+</ul>
+<p><strong>R语言中文网：rchinanet</strong></p>
+<ul>
+<li>功能介绍：R语言学习与交流 数据挖掘 统计分析 大数据及可视化</li>
+</ul>
+<p><strong>R语言论坛：Ryuyanluntan</strong></p>
+<ul>
+<li>功能介绍：大数据时代，我们需要一个强大的软件Running！！！R语言出现了！！！这里是R语言最好的学习交流平台，包括R语言书籍，R语言课程，R语言程序包使用，教你获得数据，处理数据，做出决策！！</li>
+</ul>
+<p><strong>待字闺中：daiziguizhongren</strong></p>
+<ul>
+<li>功能介绍：了解国内外，最新最全的面试经验，最新的最有趣的面试题。</li>
+</ul>
+<p><strong>Crossin的编程教室：crossincode</strong></p>
+<ul>
+<li>功能介绍：每天5分钟，学点简单编程，用新的思维方式看世界。【声明：公众号搜出的另一个同名是山寨货】</li>
+</ul>
+<p><strong>阿里研究院：aliresearch</strong></p>
+<ul>
+<li>功能介绍：<a href="http://www.aliresearch.com/" target="_blank" rel="external">阿里研究院</a>依托阿里巴巴集团海量数据、深耕小企业前沿案例、集结全球商业智慧，以开放、合作、共建、共享的方式打造具有影响力的新商业知识平台。阿里研究院，洞察数据，共创新知！</li>
+<li>腾讯微博：来自腾讯微博认证资料：阿里研究院官方微博 @阿里研究院。</li>
+<li>微博同名：<a href="http://weibo.com/u/1664679101" target="_blank" rel="external">阿里研究院</a>。</li>
+<li>来往扎堆：阿里研究院。</li>
+</ul>
+<p><strong>阿里商业评论：Alibusinessreview</strong></p>
+<ul>
+<li>功能介绍：阿里商业评论（Ali Business Review，简称ABR）由阿里巴巴集团研究院创建，旨在深耕小企业前沿案例、集结全球商业智慧，发现、汇集、分享互联网时代的杰出商业实践。</li>
+</ul>
+<p><strong>百度营销研究院</strong></p>
+<ul>
+<li>功能介绍：百度营销研究院作为互联网营销领先探索者，创新、沉淀、分享基于百度平台数字营销方法论，与业界知名专家学者共同探讨前瞻性的营销趋势及突破性的营销实践，率先发布数字营销行业标准、方法论。为业界专家、品牌广告主、代理公司提供最具有价值的创新营销建议。</li>
+<li>账号主体：百度在线网络技术（北京）有限公司</li>
+<li>商标保护：百度。</li>
+</ul>
+<p><strong>腾讯研究院：cyberlawrc</strong></p>
+<ul>
+<li>功能介绍：【腾讯研究院 ★ Tencent Research Institute】网聚智慧，连接世界！网络互联网前沿理念、传递互联网发展声音、汇集互联网研究成果、推动互联网法治进程。</li>
+<li>账号主体：深圳市腾讯计算机系统有限公司。</li>
+</ul>
+<p><strong>道哥的黑板报：taoasay</strong></p>
+<ul>
+<li>功能介绍：我偶然发现了隐藏在这个世界背后的真相，可惜这里的空白太小了，我没有办法写下来。想知道吗？请每天来看看吧？关注互联网、黑客、创业、技术、历史、文化，可能还有美女哦。</li>
+<li>腾讯微博：来自腾讯微博认证资料：吴翰清，《白帽子讲Web安全》作者，安全宝联合产品副总裁，前阿里巴巴集团高级安全专家。 @axis</li>
+</ul>
+<blockquote>
+<p>道哥现在已经回到阿里巴巴集团安全部，出任研究员（P10），云盾负责人，新浪微博 @<a href="http://weibo.com/u/1707085527" target="_blank" rel="external">aullik5</a>，博客：<a href="http://hi.baidu.com/new/aullik5" target="_blank" rel="external">大风起兮云飞扬_百度空間</a>。</p>
+</blockquote>
+<p><strong>二爷鉴书：findbook</strong></p>
+<ul>
+<li>功能介绍：第一时间向大家推荐好书和介绍，同时坚决揭露烂书，以IT、互联网行业为主。个人品味，仅供参考。输入[his]命令可以查看往期历史。</li>
+</ul>
+<p><strong>IT鉴书</strong></p>
+<ul>
+<li>推荐专业IT图书，我们将根据推荐图书提供最新技术资讯。</li>
+<li>账号主体：北京奥维博世图书发行有限公司。</li>
+</ul>
+<p><strong>人邮IT书坊：ptpressitbooks</strong></p>
+<ul>
+<li>功能介绍：走在技术最前沿，发布最新新书资讯，分享最新技术文章。</li>
+<li>账号主体：人民邮电出版社。</li>
+</ul>
+<p><strong>图灵教育：turingbooks</strong></p>
+<ul>
+<li>功能介绍：是好书，把我们联系在一起。</li>
+<li>账号主体：<a href="http://www.ituring.com.cn/" target="_blank" rel="external">北京图灵文化发展有限公司</a>。</li>
+<li>客服电话：010-51095181-605。</li>
+</ul>
+<p><strong>LinkedIn中国：LinkedIn-China</strong></p>
+<ul>
+<li>功能介绍：LinkedIn（领英）创建于2003年，致力于向全球职场人提供沟通平台，协助他们事半功倍，发挥所长。作为全球最大的职业社交网站，LinkedIn会员人数在世界范围内超过3亿，每个《财富》世界500强公司均有高管加入。</li>
+<li>账号主体：北京领英信息技术有限公司。</li>
+<li>客服电话：4000106277。</li>
+</ul>
+<p><strong>肉饼铺子：robbinthoughts</strong></p>
+<ul>
+<li>功能介绍：肉饼铺子作者robbin是前JavaEye网站创始人，TOPITCLUB互联网俱乐部发起人，移动互联网创业者。robbin希望借助这个平台和大家分享互联网领域的想法、观点和经验，也希望借助这个平台认识更多互联网行业朋友，互相交流和学习。</li>
+</ul>
+<p><strong>投资人子柳：vc-ziliu</strong></p>
+<ul>
+<li>功能介绍：站在投资和创业，科技和人文的十字路口，吹吹牛。</li>
+</ul>
+<p><strong>小道消息：WebNotes</strong></p>
+<ul>
+<li>功能介绍：小道消息，只有小道消息才能拯救中国互联网；只有小道消息才能拯救中国创业者；哦，当然这是一句玩笑话。这里为你分享一些我对互联网的思考和观点，别的地方可能没有的东西。</li>
+<li>账号主体：<a href="http://weibo.com/fenng" target="_blank" rel="external">Fenng</a>，冯大辉，丁香园技术产品负责人。</li>
+</ul>
+<p><strong>移动观察：mobileweb</strong></p>
+<ul>
+<li>功能介绍：如果你没有时间研究移动互联网，我们愿意替你研究。如果你没有时间到世界各地考察移动互联网发展的最新情况，我们愿意替你出去走走。本账号由 @曾航 和 @经纬庄明浩 共同维护。</li>
+</ul>
+<p><strong>青龙老贼：Z_talk</strong></p>
+<ul>
+<li>功能介绍：互联网技术、产品、趋势观察报告，移动互联网创业、创新报道。</li>
+<li>账号主体：青龙老贼，移动互联网资深分析师。</li>
+</ul>
+<p><strong>懒人在思考：lazy-thought</strong></p>
+<ul>
+<li>功能介绍：以黑客那种邪气看待世界。而你，务必保持自己的独立思维。 By <a href="http://evilcos.me/?page_id=6" target="_blank" rel="external">余弦</a></li>
+</ul>
+<p><strong>TimYang:timyang_net</strong></p>
+<ul>
+<li>功能介绍：技术架构评论、技术生活、技术管理随想。</li>
+</ul>
+<p><strong>CSDN：CSDNnews</strong></p>
+<ul>
+<li>功能介绍：CSDN精彩内容每日推荐。我们关注IT产品研发背后的那些人、技术和故事。</li>
+<li>腾讯微博：来自腾讯微博认证资料：全球最大中文IT社区–CSDN官方微博 @ csdnnews。</li>
+</ul>
+<p><strong>CSDN云计算：CSDNcloud</strong></p>
+<ul>
+<li>功能介绍：CSDN作为国内最专业的云计算服务平台，提供云计算、大数据、虚拟化、数据中心、OpenStack、CloudStack、Hadoop、Spark、机器学习、智能算法等相关云计算观点，云计算技术，云计算平台，云计算实践，云计算产业咨询等服务。</li>
+<li>账号主体：北京创新乐知信息技术有限公司。</li>
+<li>商标保护：CSDN。</li>
+</ul>
+<p><strong>CSDN大数据：csdnbigdata</strong></p>
+<ul>
+<li>功能介绍：CSDN分享Hadoop、Spark、NoSQL/NewSQL、HBase、Impala、内存计算、流计算、机器学习和智能算法等相关大数据观点，提供云计算和大数据技术、平台、实践和产业信息等服务。</li>
+</ul>
+<p><strong>developerWorks：developerWorks</strong></p>
+<ul>
+<li>功能介绍：我们的产品：<a href="http://weekly.manong.io/" target="_blank" rel="external">《码农周刊》</a>、<a href="http://toutiao.io/" target="_blank" rel="external">《开发者头条》</a>。</li>
+</ul>
+<p><strong>dockerpool：dockerpool</strong></p>
+<ul>
+<li>功能介绍：dockerpool官方账号，最专业的docker技术交流社区，专注dockers核心技术和热点方向。定期发布，欢迎关注。</li>
+</ul>
+<p><strong>慕课网：imooc815</strong></p>
+<ul>
+<li>功能介绍：慕课网是一个超酷的互联网、IT技术免费学习平台，创新的网络一站式学习、实践体验；服务及时贴心，内容专业、有趣易学。专注服务互联网工程师快速成为技术高手！</li>
+<li>账号主体：北京慕课科技中心（有限合伙）</li>
+</ul>
+<p><strong>慕课网imooc：imooc-com</strong></p>
+<ul>
+<li>功能介绍：<a href="http://www.imooc.com/" target="_blank" rel="external">慕课网</a>官网微信公众平台。免费的IT技术视频学习、分享网站。可以学习在线编程、前端开发技术、PHP、JAVA、C++、安卓和IOS开发等互联网技术。名企技术牛人+理论+案例+视频讲解+在线编程，学习可以很简单！</li>
+<li>账号主体：北京慕课科技中心（有限合伙）。</li>
+</ul>
+<p><strong>MOOC学院：GuokrMOOC</strong></p>
+<ul>
+<li>功能介绍：MOOC学院是果壳网旗下产品。为中文MOOC（大规模公开的在线课程）学习者打造社会化学习平台。</li>
+<li>腾讯微博：来自腾讯微博认证资料：果壳网旗下产品MOOC学院官方微博（<a href="http://mooc.guokr.com/" target="_blank" rel="external">mooc.guokr.com/</a>）@<a href="http://weibo.com/guokrmooc" target="_blank" rel="external">MOOC学院</a></li>
+</ul>
+<hr>
+<h3 id="贴两篇我在知乎上面关于这方面的回答">贴两篇我在知乎上面关于这方面的回答</h3><ul>
+<li><a href="http://www.zhihu.com/question/29693016/answer/45259867" target="_blank" rel="external">互联网求职路上，你见过哪些写得很好、很用心的面经？最好能分享自己的面经、心路历程</a></li>
+<li><a href="http://www.zhihu.com/question/26350691/answer/42692522" target="_blank" rel="external">阿里 Java 校招对本科生有什么要求？</a></li>
+</ul>
+<h3 id="最后送大家一些话">最后送大家一些话</h3><hr>
+<blockquote>
+<ol>
+<li>基础很重要,所有高大上的技术都建立在基础之上</li>
+<li>坚持自己的道路，不要半途而废。</li>
+<li>多接触优秀的人,人以类聚,物以群分！</li>
+<li>运气很重要,你再厉害！运气不好都是浮云</li>
+<li>越努力，越幸运！</li>
+</ol>
+<p>禁止转载！！若私自转载者，我将利用法律武器维护自己的权益！</p>
+</blockquote>
+]]></content>
+    <summary type="html">
+    <![CDATA[<blockquote>
+<p>下面是我写给学弟们在学习路线上的一些建议，大家可以参考一下！希望能够帮助到大家，有写得不太合适的地方，<strong>还请大家指正</strong>！</p>
+</blockquote>
+<h3 id="一、基础">一、基础</h3><ul>
+<l]]>
+    </summary>
+    
+      <category term="java" scheme="http://zhaodong.duapp.com/tags/java/"/>
+    
+      <category term="技术心得" scheme="http://zhaodong.duapp.com/tags/%E6%8A%80%E6%9C%AF%E5%BF%83%E5%BE%97/"/>
+    
+      <category term="技术、心得" scheme="http://zhaodong.duapp.com/categories/%E6%8A%80%E6%9C%AF%E3%80%81%E5%BF%83%E5%BE%97/"/>
+    
+  </entry>
+  
+</feed>

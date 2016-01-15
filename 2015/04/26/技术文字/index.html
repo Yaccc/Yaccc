@@ -1,0 +1,1242 @@
+<!doctype html>
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+  <link href="/vendors/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css"/>
+
+
+
+
+  <link href="//fonts.googleapis.com/css?family=Lato:300,400,700,400italic&subset=latin,latin-ext" rel="stylesheet" type="text/css">
+
+
+
+<link href="/vendors/font-awesome/css/font-awesome.min.css?v=4.4.0" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.0.0" rel="stylesheet" type="text/css" />
+
+
+  <meta name="keywords" content="java,技术心得," />
+
+
+
+
+
+  <link rel="alternate" href="/atom.xml" title="「浮生若梦」" type="application/atom+xml" />
+
+
+
+
+  <link rel="shortcut icon" type="image/x-icon" href="/images/avator.jpg?v=5.0.0" />
+
+
+
+
+
+
+<meta name="description" content="下面是我写给学弟们在学习路线上的一些建议，大家可以参考一下！希望能够帮助到大家，有写得不太合适的地方，还请大家指正！
+
+一、基础
+主要看《java核心技术：卷一》的重点章节
+掌握java常用技术，io、多线程、反射、常用集合框架
+数据结构看一遍，作用至少要清楚。如hash冲突解决办法，常用排序算法的应用场景和空间/时间复杂度等
+数据库，能看懂ER关系，熟悉数据库三大范式，熟练常用SQL语句
+可以掌">
+<meta property="og:type" content="article">
+<meta property="og:title" content="技术文字">
+<meta property="og:url" content="http://zhaodong.duapp.com/2015/04/26/技术文字/index.html">
+<meta property="og:site_name" content="「浮生若梦」">
+<meta property="og:description" content="下面是我写给学弟们在学习路线上的一些建议，大家可以参考一下！希望能够帮助到大家，有写得不太合适的地方，还请大家指正！
+
+一、基础
+主要看《java核心技术：卷一》的重点章节
+掌握java常用技术，io、多线程、反射、常用集合框架
+数据结构看一遍，作用至少要清楚。如hash冲突解决办法，常用排序算法的应用场景和空间/时间复杂度等
+数据库，能看懂ER关系，熟悉数据库三大范式，熟练常用SQL语句
+可以掌">
+<meta property="og:image" content="http://img.blog.csdn.net/20150426145737514">
+<meta property="og:updated_time" content="2016-01-10T07:21:00.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="技术文字">
+<meta name="twitter:description" content="下面是我写给学弟们在学习路线上的一些建议，大家可以参考一下！希望能够帮助到大家，有写得不太合适的地方，还请大家指正！
+
+一、基础
+主要看《java核心技术：卷一》的重点章节
+掌握java常用技术，io、多线程、反射、常用集合框架
+数据结构看一遍，作用至少要清楚。如hash冲突解决办法，常用排序算法的应用场景和空间/时间复杂度等
+数据库，能看懂ER关系，熟悉数据库三大范式，熟练常用SQL语句
+可以掌">
+
+
+
+<script type="text/javascript" id="hexo.configuration">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    scheme: 'Pisces',
+    sidebar: '[object Object]',
+    fancybox: true,
+    motion: true,
+    duoshuo: {
+      userId: 0,
+      author: '博主'
+    }
+  };
+</script>
+
+  <title> 技术文字 | 「浮生若梦」 </title>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+
+
+
+
+
+
+  
+  
+    
+  
+
+  <div class="container one-collumn sidebar-position-left page-post-detail ">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-meta ">
+  
+
+  <div class="custom-logo-site-title">
+    <a href="/"  class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <span class="site-title">「浮生若梦」</span>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+  <p class="site-subtitle"></p>
+</div>
+
+<div class="site-nav-toggle">
+  <button>
+    <span class="btn-bar"></span>
+    <span class="btn-bar"></span>
+    <span class="btn-bar"></span>
+  </button>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu ">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-home fa-fw"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories" rel="section">
+            
+              <i class="menu-item-icon fa fa-th fa-fw"></i> <br />
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about" rel="section">
+            
+              <i class="menu-item-icon fa fa-user fa-fw"></i> <br />
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives" rel="section">
+            
+              <i class="menu-item-icon fa fa-archive fa-fw"></i> <br />
+            
+            归档
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags" rel="section">
+            
+              <i class="menu-item-icon fa fa-tags fa-fw"></i> <br />
+            
+            标签
+          </a>
+        </li>
+      
+
+      
+      
+      
+    </ul>
+  
+
+  
+</nav>
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal " itemscope itemtype="http://schema.org/Article">
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+            
+            
+              
+                技术文字
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            <span class="post-meta-item-icon">
+              <i class="fa fa-calendar-o"></i>
+            </span>
+            <span class="post-meta-item-text">发表于</span>
+            <time itemprop="dateCreated" datetime="2015-04-26T22:46:18+08:00" content="2015-04-26">
+              2015-04-26
+            </time>
+          </span>
+
+          
+            <span class="post-category" >
+              &nbsp; | &nbsp;
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+              
+                <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
+                  <a href="/categories/技术、心得/" itemprop="url" rel="index">
+                    <span itemprop="name">技术、心得</span>
+                  </a>
+                </span>
+
+                
+                
+
+              
+            </span>
+          
+
+          
+            
+              <span class="post-comments-count">
+                &nbsp; | &nbsp;
+                <a href="/2015/04/26/技术文字/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count ds-thread-count" data-thread-key="2015/04/26/技术文字/" itemprop="commentsCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+
+          
+          
+        </div>
+      </header>
+    
+
+
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <blockquote>
+<p>下面是我写给学弟们在学习路线上的一些建议，大家可以参考一下！希望能够帮助到大家，有写得不太合适的地方，<strong>还请大家指正</strong>！</p>
+</blockquote>
+<h3 id="一、基础">一、基础</h3><ul>
+<li>主要看《java核心技术：卷一》的重点章节</li>
+<li>掌握<code>java</code>常用技术，<code>io</code>、<code>多线程</code>、<code>反射</code>、常用<code>集合</code>框架</li>
+<li>数据结构看一遍，作用至少要清楚。如<code>hash</code>冲突解决办法，常用排序算法的应用场景和空间/时间复杂度等</li>
+<li>数据库，能看懂<code>ER</code>关系，熟悉数据库三大范式，熟练常用<code>SQL</code>语句</li>
+<li>可以掌握一点<code>java</code>网络编程方面的知识，对<code>tcp/ip</code>有初步的认识</li>
+<li>课程不能落下，专业课程（计算机网络，操作系统，数据结构，数据库，计算机组成原理）要好好学。<strong>不要挂科</strong></li>
+<li>学习<code>servlet/jsp</code>，至少能写简单的图书管理系统，熟悉核心<code>api</code></li>
+<li>了解前后端交互方式，<code>ajax</code>、<code>json/xml</code>至少知道，会使用<code>jquery</code>，<code>html</code>，<code>css</code>，<code>js</code>最好<h3 id="二、提高">二、提高</h3></li>
+<li>学习后端框架，<code>SpringMVC/Struts2</code>、<code>Mybatis</code>、<code>Spring</code>，熟悉<code>MVC</code>模式，知道三层架构及每一层之间的关系</li>
+<li>会用<code>chrome/firefox</code>浏览器分析<code>http</code>请求，解决、定位问题。知道常用http状态码，了解<code>TCP/IP</code>，知道一次<code>http</code>请求发生了哪些事情</li>
+<li>学习<code>设计模式</code>，<code>23</code>种设计模式都需要了解一点，熟悉常用的如：单例，工厂，模板，适配器，代理，责任链，构造器，装饰器，迭代器，策略，命令，观察者，外观，享元。理解他们的好处，可以找找在其他框架哪些用了这些设计模式。</li>
+<li>可以适当的看一些源码，<code>Spring</code>的源码可以着重的看一下。<code>tomcat</code>可以从源码的角度看看<code>tomcat</code>的整体设计方案，一次请求<code>tomcat</code>如何处理，<code>servlet</code>在<code>tomcat</code>中的加载，编译过程。tomcat自定义的<code>ClassLoader</code>有什么作用。</li>
+<li>会设计数据库，<code>多对多</code>，<code>一对多</code>，<code>迭代</code>，会写复杂的<code>SQL</code>，了解<code>SQL</code>调优，会写<code>存储过程</code>，<code>触发器</code>。熟悉<code>索引</code>的使用，了解<code>视图</code>。去了解一些常用<code>NOSQL</code>，比如<code>Redis/mongodb</code></li>
+<li>学习<code>Linux</code>，熟悉<code>基本命令</code>，学习一种<code>脚本</code>语言(<code>shell/python</code>)。会在<code>linux</code>下写脚本开发<h3 id="三、深入">三、深入</h3></li>
+<li><code>算法</code>，可以看看<code>编程之美</code>，<code>算法导论</code>。学习一些算法相关的知识</li>
+<li>深入<code>java</code>：理解<code>JVM</code>,<code>JMM</code>，<code>Classloader</code>，<code>GC</code>算法，<code>GC</code>收集器。学会定位<code>OOM</code>问题所在。</li>
+<li>源码分析，常用集合类如：<code>Hashmap</code>，<code>Arraylist</code>,<code>linkedList</code>，<code>HashSet</code>，<code>ConcurrentHashmap</code>等的源码分析，要非常熟悉<code>java</code>集合框架设计。最好能够分析一种框架源码，比如<code>Spring</code></li>
+<li>深入数据库，理解至少两种<code>数据库引擎</code>（<code>Inndb/Mysiam</code>）的差异性,熟悉索引的内部数据结构，熟悉常见的<code>索引方式（Btree，hash）</code>，和<code>索引类型（unique，full text,normal）</code>，会使用<code>explain</code>分析<code>SQL</code>语句，会优化<code>SQL</code>语句，熟悉一种<code>NOSQL</code>，知道内部实现原理（内部数据结构，在算法优化，内部机制）,掌握<code>分布式数据库</code>的知识，分表，分库，分区，分布式事务等，可以学习一个数据库中间件（<code>TDDL/COBAR</code>）</li>
+<li>架构设计，看看大型高流量/高并发的网站设计（CDN，异步，前端优化），了解缓存（分布式<code>memcached</code>/常用本地缓存），搜索引擎（<code>lucene/solr/elasticSearch</code>），分布式（<code>负载均衡/分布式数据库/分布式应用集群</code>）,消息队列（<code>ActiveMQ/Rabbitmq</code>）在大型网站中的作用</li>
+<li>还有一些其他的知识，如<code>RPC</code>框架，分布式服务架构，<code>SOA</code>,<code>REST</code>架构等等</li>
+<li>可以接触一些云计算方面的知识，如<code>Hadoop/Storm/Spark</code>等，要是再能接触一点<code>机器学习</code>就更棒啦(反正我是没有，听着就吓人，跑个kmeans算法都要弄死人，(<em>+﹏+</em>)逃</li>
+</ul>
+<p><img src="http://img.blog.csdn.net/20150426145737514" alt=""></p>
+<h3 id="我看过的书籍，留个参考！（当然没有全部掌握）">我看过的书籍，留个参考！（当然没有全部掌握）</h3><ul>
+<li>《深入分析Java Web技术内幕》<a href="http://weibo.com/u/1855869382?topnav=1&amp;wvr=6&amp;topsug=1" target="_blank" rel="external"><code>@淘宝君山</code></a>写的书，经历了taobao.com从一亿到十亿的pv变化（二面面试管么么哒(<em>+﹏+</em>)）</li>
+<li>《java编程思想》这个至今觉得一般，可能是功力还没有达到 (๑¯ิε ¯ิ๑)</li>
+<li>《java核心技术：卷一卷二》，对java入门非常不错，基本上涵盖了java很多知识</li>
+<li>《java并发编程实战》并发肯定要看这本书啦，从理论和实践上面讲得非常不错哦</li>
+<li>《编程之美》,《剑指offer》这两本本书不用说，刷<code>offer</code>必备</li>
+<li>《深入理解jvm虚拟机》看了这本书，基本上<code>JVM</code>相关的知识难不倒，唯一缺的就是实战经验</li>
+<li>《Spring技术内幕》比较透彻的解读了<code>spring</code>的源码，浅显易懂</li>
+<li>《大型网站技术架构》alibaba.com架构师<a href="http://weibo.com/itisaid" target="_blank" rel="external"><code>@李智慧</code></a>写的书,在大型网站架构方面有非常深刻的认识，我等膜拜</li>
+<li>《java设计模式》这本书一般般，主要看看大牛的博客</li>
+<li>《java网络编程》一般般，讲得不是很深，可以对io和网络有进一步的认识</li>
+<li>《java分布式应用：基础与实践》<code>@毕玄</code>写的书，大牛写的书都要膜拜</li>
+<li>《java数据结构与算法》外国人写的书，一般，不评价！用java实现了80%的数据结构</li>
+<li>《how tomcat works》在讲解<code>tomcat</code>的架构和设计模式方面讲得非常不错，虽然和现在的版本上有一些差别，但是影响不大</li>
+<li>《tcp/ip详解，卷一：协议》深入理解<code>tcp</code>。对<code>tcp</code>各个方面都有更加深刻的认识,正在看</li>
+<li>《hadoop技术内幕》可以<code>pass</code>掉，当时学习<code>hadoop</code>的时候看的书籍，讲解<code>hadoop</code>的源代码</li>
+<li>《算法导论》正在看，（逃，其实我也想做一个算法狗</li>
+</ul>
+<hr>
+<blockquote>
+<p>那么除了看书籍之外还有哪些学习方式呢？下面说说其他的学习方式</p>
+</blockquote>
+<ol>
+<li>参加开源项目/自己写点东西放在<code>GITHUB</code>上面，笔者我写了一个自己的<code>MVC</code>框架(<code>Dreamvc</code>),<code>github</code>地址-&gt;<a href="https://github.com/xiexiaodong" target="_blank" rel="external">点击</a>.另外可以去<code>fork</code>下其他人的开源项目，如果感兴趣就贡献一下，不感兴趣就学习别人的编码风格，去其糟粕！</li>
+<li>多看看大牛的博客，这里我列举一些<strong>大牛</strong>的博客<ul>
+<li><a href="http://blog.csdn.net/v_JULY_v" target="_blank" rel="external">结构之法，算法之道,<strong>july</strong>大神的博客</a></li>
+<li><a href="http://blog.csdn.net/xieyuooo" target="_blank" rel="external">xieyuooo的专栏，《java特种兵作者》</a></li>
+<li><a href="http://weibo.com/u/1921993171" target="_blank" rel="external">@兰亭风雨人任平生</a>|<a href="http://blog.csdn.net/ns_code?viewmode=list" target="_blank" rel="external">兰亭风雨的专栏, 目前人在腾讯，博客都写得很好，很深入！受益匪浅</a></li>
+<li><a href="http://thinkinginjavablog.sinaapp.com/" target="_blank" rel="external">机会永远留给有准备的人,享受编程和技术所带来的快乐（目前人在VMware）</a></li>
+<li><a href="http://blog.csdn.net/yangbutao?viewmode=list" target="_blank" rel="external">分布式架构、大数据、机器学习、搜索、推荐、广告</a></li>
+<li><a href="http://irfen.me/" target="_blank" rel="external">赵伊凡’s Blog，涉及各个领域</a></li>
+<li><a href="http://www.searchtb.com/" target="_blank" rel="external">搜索技术博客－淘宝，搜索团队的blog</a></li>
+<li><a href="http://www.liaoxuefeng.com/" target="_blank" rel="external">廖雪峰的官方网站,python就是跟着他学的</a></li>
+<li><a href="http://www.inbreak.net/" target="_blank" rel="external">空虚浪子心的灵魂,java安全，alibaba的安全专家</a></li>
+<li><a href="http://jm-blog.aliapp.com/" target="_blank" rel="external">阿里中间件团队博客，咱事业部的中间件，很厉害 (๑¯ิε ¯ิ๑)</a></li>
+<li><a href="http://www.ha97.com/" target="_blank" rel="external">服务器运维与网站架构|Linux运维|X研究,里面提到的技术都碉堡，博客质量也高。曾经memcached在哪里学到了很多</a></li>
+<li><a href="http://blog.sina.com.cn/s/blog_693f08470102vibt.html" target="_blank" rel="external">淘宝<strong>沈询</strong>_WhisperXD的博客,TDDL作者，ONS消息服务负责人，差点就跟着沈沈混了(•‾̑⌣‾̑•)✧˖° (๑´ڡ`๑) (๑¯ิε ¯ิ๑),在数据库方面强烈推荐</a></li>
+<li><a href="http://www.aminglinux.com/study_v2/index.html" target="_blank" rel="external">跟阿铭学Linux</a></li>
+<li><a href="http://mindhacks.cn/" target="_blank" rel="external"><strong>刘未鹏</strong> | MIND HACKS，这个大牛简直不要太叼</a></li>
+</ul>
+</li>
+<li>多上一些高质量的网站，下面我列举一些,<strong>每天</strong>都最好抽时间去走一遍<ul>
+<li><a href="https://github.com/" target="_blank" rel="external">GitHub,程序员不知道这个可以考虑转行了(๑´ڡ`๑)</a></li>
+<li><a href="http://blog.csdn.net/" target="_blank" rel="external">CSDN.中国最大的it交流网站</a></li>
+<li><a href="http://www.cnblogs.com/" target="_blank" rel="external">cnblogs,还是有很多资料的，里面也有大神</a></li>
+<li><a href="http://stackoverflow.com/" target="_blank" rel="external">Stack Overflow,问答网站，回答质量高</a></li>
+<li><a href="https://leetcode.com/problemset/algorithms/" target="_blank" rel="external"> LeetCode OJ,刷算法的oj</a></li>
+<li><a href="http://www.v2ex.com/" target="_blank" rel="external">V2EX,一个关于分享和探索的地方。</a></li>
+<li><a href="http://www.iteye.com/" target="_blank" rel="external">ITeye,前身为JavaEye。</a></li>
+<li><a href="http://ifeve.com/" target="_blank" rel="external">并发编程网，致力于促进并发编程研究和传播的垂直性技术网站。</a></li>
+<li><a href="http://www.ibm.com/developerworks/cn/" target="_blank" rel="external">IBM developerWorks 中国，里面有高质量的文章</a></li>
+<li><a href="http://www.oschina.net/" target="_blank" rel="external">开源中国，可以关注一些开源动态</a></li>
+<li><a href="http://ask.julyedu.com/" target="_blank" rel="external">7月算法,july的在线教育项目,主要是算法方面</a></li>
+<li><a href="http://www.infoq.com/cn/" target="_blank" rel="external">InfoQ,促进软件开发领域知识与创新的传播</a></li>
+</ul>
+</li>
+<li>关注一些技术类的微信号(晚上睡觉或者平时杂碎时间看)<a href="http://www.zhihu.com/people/Michael282694" target="_blank" rel="external">@michael282694的知乎</a>|<a href="http://michael282694.com/post/ji-zhu-lei-xiang-guan-wei-xin-gong-zhong-zhang-hao-he-wang-zhan" target="_blank" rel="external">cindy总结的 (๑¯ิε ¯ิ๑)，这是原地址</a><br>&gt;<br>部分参考：<a href="http://mp.weixin.qq.com/s?__biz=MzA4MjEyNTA5Mw==&amp;mid=204672969&amp;idx=1&amp;sn=a1e344f82224755ddb066abf30ad7dcd&amp;scene=5#rd" target="_blank" rel="external">推荐关注的微信公众号</a>。</li>
+</ol>
+<p><strong>36氪：wow36kr</strong></p>
+<ul>
+<li>功能介绍：36氪（<a href="http://36kr.com/" target="_blank" rel="external">36Kr.com</a>）是中国领先的科技新媒体，我们报道最新的互联网科技新闻以及最有潜力的互联网创业企业。</li>
+<li>账号主体：北京协力筑成传媒科技有限公司。</li>
+<li>商标保护：氪 36。</li>
+</ul>
+<p><strong>硅发布：guifabucom</strong></p>
+<ul>
+<li>功能介绍：这是硅发布网站的官方微信账号，我们在硅谷。</li>
+<li>来自新浪微博认证资料：<a href="www.guifabu.com">硅发布中文网</a>，官方微博 @<a href="http://weibo.com/guifabu" target="_blank" rel="external">硅发布中文网</a>。</li>
+</ul>
+<p><strong>虎嗅网：huxiu_com</strong></p>
+<ul>
+<li>功能介绍：有视角的商业资讯交流平台。</li>
+<li>账号主体：北京云觅信息科技有限公司。</li>
+</ul>
+<p><strong>InfoQ：infoqchina</strong></p>
+<ul>
+<li>功能介绍：关注中高端技术人员的社区媒体，促进软件开发领域知识与创新的传播。</li>
+<li>账号主体：北京创新网媒广告有限公司。</li>
+</ul>
+<p><strong>中文互联网数据研究资讯中心：i199it</strong></p>
+<ul>
+<li>功能介绍：发掘、分享数据价值，为您提供一个内容丰富的互联网数据咨询平台！网站（<a href="http://www.199it.com/" target="_blank" rel="external">199it.com</a>）、微博 @<a href="http://weibo.com/199it" target="_blank" rel="external">199IT-互联网数据中心</a>、大数据工具导航（<a href="http://hao.199it.com/" target="_blank" rel="external">hao.199it.com</a>），感谢您的关注。</li>
+<li>账号主体：北京思集智库科技有限公司。</li>
+</ul>
+<p><strong>伯乐在线：jobbole</strong></p>
+<ul>
+<li>功能介绍：关注职业资讯；学习各类职业感悟、心得和经验分享，扩大职业视野；体会求职、工作和创业的历程 - 就在<a href="http://www.jobbole.com/" target="_blank" rel="external">伯乐在线</a>。</li>
+<li>腾讯微博：来自腾讯微博认证资料：伯乐在线专注于个人职业发展和企业人才服务，提供一个互动、高校的人才服务平台。@伯乐在线</li>
+</ul>
+<p><strong>深蓝阅读：bluereader</strong></p>
+<ul>
+<li>功能介绍：深蓝阅读是专注于内容订阅的平台，可订阅RSS或任何网站链接，一切你关心的皆可订阅。官网网址：<a href="http://bluereader.org/" target="_blank" rel="external">bluereader.org</a>。</li>
+</ul>
+<p><strong>互联网er的早读课</strong></p>
+<ul>
+<li>功能介绍：专注互联网产品、用研、交互、设计、运营领域精选内容。信息爆炸的社会，每天用心的去读一篇文章，也许胜过你的走马观花。每早八点，我们等你。</li>
+<li>腾讯微博：来自腾讯微博认证资料：<a href="http://zaodula.com/" target="_blank" rel="external">互联网er的早读课</a>官方微博，专注产品、用研、交互，每天一篇，提供互联网人的慢阅读。 @<a href="http://weibo.com/u/5508827709" target="_blank" rel="external">互联网er的早读课</a></li>
+</ul>
+<p><strong>程序员：imkuqin</strong></p>
+<ul>
+<li>功能介绍：本微信公众号：imkuqin，为程序员提供最新最全的编程学习资料的查询。目前已经开通PHP、C/C++函数库、.NET Framework类库、J2SE API查询功能。</li>
+<li>新浪微博：来自新浪微博认证资料：IT程序猿（<a href="http://www.ithao123.com/" target="_blank" rel="external">ithao123.com</a>）官方微博 @<a href="http://weibo.com/kuqin" target="_blank" rel="external">IT程序猿</a>。</li>
+</ul>
+<p><strong>程序人生：programmer_life</strong></p>
+<ul>
+<li>功能介绍：十年慢慢程序人生，打过各种杂，也做过让我骄傲的软件；管理过十多人的团队，还带领一班兄弟姐妹创过业。关注程序人生，了解程序猿，学做程序猿，让我们的人生不再屌丝化。</li>
+</ul>
+<p><strong>程序员那些事：iProgrammer</strong></p>
+<ul>
+<li>功能介绍：最有影响力的程序员自媒体，关注程序员相关话题：IT技术、IT职场、在线课程、学习资源等。</li>
+<li>私人微信账号：myGuanguan，微博 @<a href="http://weibo.com/justcodeit" target="_blank" rel="external">程序员那些事</a>。</li>
+</ul>
+<p><strong>姑婆那些事儿：gupo520</strong></p>
+<ul>
+<li>功能介绍：有温度的互联网原创干货分享社区。关注网站推广运营，移动推广（android，ios）运营，在线教育，校园推广等话题。</li>
+</ul>
+<p><strong>数据库开发：DBDevs</strong></p>
+<ul>
+<li>功能介绍：分享数据库相关技术文章、教程和工具，另外还包括数据库相关的工作。偶尔也谈谈程序员人生:)</li>
+</ul>
+<p><strong>CPP开发者：cppFans</strong></p>
+<ul>
+<li>功能介绍：关注C和C++啦。</li>
+</ul>
+<p><strong>Python开发者：PythonCoder</strong></p>
+<ul>
+<li>人生苦短，我用Python。分享Python相关的技术文章、工具资源、精选课程、热点资讯等。</li>
+</ul>
+<p><strong>ImportNew：importnew</strong></p>
+<ul>
+<li>功能介绍：专注Java和Android技术分享。ImportNew由两个Java关键词Import和new组成。意指：Java &amp; Android程序员学习新知识的网站。</li>
+</ul>
+<p><strong>Linux爱好者：LinuxHub</strong></p>
+<ul>
+<li>功能介绍：分析Linux/Unix相关的技术文章、教程和工具。</li>
+</ul>
+<p><strong>Linux中国：linux-cn</strong></p>
+<ul>
+<li>功能介绍：面向Linux爱好者，提供Linux技术文章、新闻资讯和交流平台。每天推送一条最新精选Linux资讯和技术文章；支持Linux命令查询、Linux资讯搜索及微信群的交流。</li>
+<li>腾讯微博：来自腾讯微博认证资料：<a href="http://linux.cn/" target="_blank" rel="external">Linux中国</a>官方微博；专注于中文Linux技术、资讯的社区，在这里你可以获得一手的Linux资讯和技术知识。 @<a href="http://weibo.com/linuxcn" target="_blank" rel="external">Linux中国</a></li>
+</ul>
+<p><strong>Linux编程（添加朋友 → 公众号 → 搜索“Linux编程”，第一个黑色头像的就是）</strong></p>
+<ul>
+<li>功能介绍：每周两篇linux命令讲解，编程技巧或算法分析。</li>
+</ul>
+<p><strong>前端大全：FrontDev</strong></p>
+<ul>
+<li>功能介绍：分享Web前端相关的技术文章、工具资源、精选课程、热点资讯。</li>
+</ul>
+<p><strong>安卓应用开发：AndroidPD</strong></p>
+<ul>
+<li>功能介绍：分享安卓应用相关内容，包括：安卓应用开发、设计和推广。</li>
+</ul>
+<p><strong>iOS大全：iOShub</strong></p>
+<ul>
+<li>功能介绍：分享iOS和Mac相关的技术文章、工具资源、精选课程、热点资讯。</li>
+</ul>
+<p><strong>PHP开发者：PHPDevs</strong></p>
+<ul>
+<li>功能介绍：分享PHP相关的技术文章、工具资源、精选课程、资讯。</li>
+</ul>
+<p><strong>DotNet：iDotNet</strong></p>
+<ul>
+<li>功能介绍：专注分享.NET相关技术文章、教程和工具。有时也会涉及到IT职场相关的一些东西，或者来电幽默趣文。</li>
+</ul>
+<p><strong>设计的那些事：aboutDesigner</strong></p>
+<ul>
+<li>功能介绍：分享精选的设计相关文章、案例和行业动态。同时，也会不定期推荐设计教程、高薪职位和设计相关的优秀工具。</li>
+</ul>
+<p><strong>网页设计精选：BestWebDesign</strong></p>
+<ul>
+<li>功能介绍：分享网页设计精选文章、案例、行业趋势、课程和书籍。</li>
+</ul>
+<p><strong>UI设计达人：BestUIDesign</strong></p>
+<ul>
+<li>功能介绍：分享UI设计精选文章、案例、行业趋势、课程和书籍。</li>
+</ul>
+<p><strong>机器之心：almosthuman2014</strong></p>
+<ul>
+<li>功能介绍：人与科技的美好关系。</li>
+<li>私人微信账号：jiqizhixin2014。</li>
+</ul>
+<p><strong>统计之都：CapStat</strong></p>
+<ul>
+<li>功能介绍：专业、人本、正直的中国统计学门户网站。</li>
+</ul>
+<p><strong>数据挖掘：datadw</strong></p>
+<ul>
+<li>功能介绍：是唯一一个免费发送数据挖掘技术学习经验与咨询的公众号；关注大数据，数据分析，机器学习，电子商务最新动态，商务智能研究，最热营销案例解读，汇聚精粹，精选干货；数据分析/数据挖掘学习起来很困难？行业内专家有何经验或观点？这里的资源帮你解决！</li>
+</ul>
+<p><strong>数据挖掘菜鸟：data_bird</strong></p>
+<ul>
+<li>功能介绍：关注大数据，数据挖掘，机器学习，深度学习等人工智能领域。</li>
+</ul>
+<p><strong>大数据文摘：BigDataDigest</strong></p>
+<ul>
+<li>功能介绍：专注收集、分享大数据相关的案例、新闻，寻找志同道合的朋友合作、共赢。</li>
+<li>账号主体：深圳大数据文摘科技有限公司。</li>
+</ul>
+<p><strong>可视化之美：infovis</strong></p>
+<ul>
+<li>功能介绍：各种大数据、挖掘、可视化的知识和成果、科研与应用，原创及自行翻译内容为主。</li>
+</ul>
+<p><strong>数盟：DataScienceUnion</strong></p>
+<ul>
+<li>功能介绍：数盟致力于打造最卓越的数据科学交流平台，提倡“数据创造价值”，经常举办线上活动、线下活动、在线课程培训，同时数盟有专业的数据团队提供数据服务。官网：<a href="http://dataunion.org" target="_blank" rel="external">数盟社区 - 数据科学家联盟</a>，合作：<a href="mailto:contact@dataunion.org" target="_blank" rel="external">contact@dataunion.org</a>。</li>
+<li>账号主体：北京数盟科技有限公司。</li>
+</ul>
+<blockquote>
+<p>数盟【大数据群】 272089418，数盟【数据可视化群】 179287077。</p>
+</blockquote>
+<p><strong>数据挖掘与数据分析：datakong</strong></p>
+<ul>
+<li>功能介绍：以分析的视角为切入点，蕴含以互联网、移动互联、IT等科技领域为主的一体化综合型信息服务平台。商务合作，qq：2677585642。</li>
+</ul>
+<p><strong>大数据实验室：bigdatalab</strong></p>
+<ul>
+<li>功能介绍：宽客俱乐部旗下美国大数据实验室，大数据研究应用。</li>
+<li>账号主体：上海宽客投资管理有限公司。</li>
+</ul>
+<p><strong>SOTON数据分析：soton2014sky</strong></p>
+<ul>
+<li>功能介绍：Hi，我们是SOTON数据分析工作室，专注于带领大家零基础学习数据分析。在这里你将实现从菜鸟到专家的逾越。有梦想，出奇迹！</li>
+</ul>
+<p><strong>数据派：datapi</strong></p>
+<ul>
+<li>功能介绍：清华大学数据产业联合会（数据派）成员多为业内的清华校友。秉承“自强不息、行胜于言”，以扎实的理工功底闯荡“数据江湖”，独树一帜。本号旨在传播数据科学理念，分享数据运营心得，拓展数据应用空间，捕捉数据产业商机。在数据源，一切基于数据说话！</li>
+</ul>
+<p><strong>大数据邦：bigdatabang</strong></p>
+<ul>
+<li>功能介绍：深度分析大数据产业的资本、科技、商业价值。</li>
+</ul>
+<p><strong>R语言：Ryuyan360</strong></p>
+<ul>
+<li>功能介绍：【R语言】致力于传播R知识，包括【R每日一贴】、【R书籍推荐】，后续会推出【R那些事】、【R微课程】、【R案例分享】等栏目。R语言可以帮助我们获取数据、处理数据、分析数据、展示数据和理解数据，以进行数据化决策！</li>
+</ul>
+<p><strong>R语言中文网：rchinanet</strong></p>
+<ul>
+<li>功能介绍：R语言学习与交流 数据挖掘 统计分析 大数据及可视化</li>
+</ul>
+<p><strong>R语言论坛：Ryuyanluntan</strong></p>
+<ul>
+<li>功能介绍：大数据时代，我们需要一个强大的软件Running！！！R语言出现了！！！这里是R语言最好的学习交流平台，包括R语言书籍，R语言课程，R语言程序包使用，教你获得数据，处理数据，做出决策！！</li>
+</ul>
+<p><strong>待字闺中：daiziguizhongren</strong></p>
+<ul>
+<li>功能介绍：了解国内外，最新最全的面试经验，最新的最有趣的面试题。</li>
+</ul>
+<p><strong>Crossin的编程教室：crossincode</strong></p>
+<ul>
+<li>功能介绍：每天5分钟，学点简单编程，用新的思维方式看世界。【声明：公众号搜出的另一个同名是山寨货】</li>
+</ul>
+<p><strong>阿里研究院：aliresearch</strong></p>
+<ul>
+<li>功能介绍：<a href="http://www.aliresearch.com/" target="_blank" rel="external">阿里研究院</a>依托阿里巴巴集团海量数据、深耕小企业前沿案例、集结全球商业智慧，以开放、合作、共建、共享的方式打造具有影响力的新商业知识平台。阿里研究院，洞察数据，共创新知！</li>
+<li>腾讯微博：来自腾讯微博认证资料：阿里研究院官方微博 @阿里研究院。</li>
+<li>微博同名：<a href="http://weibo.com/u/1664679101" target="_blank" rel="external">阿里研究院</a>。</li>
+<li>来往扎堆：阿里研究院。</li>
+</ul>
+<p><strong>阿里商业评论：Alibusinessreview</strong></p>
+<ul>
+<li>功能介绍：阿里商业评论（Ali Business Review，简称ABR）由阿里巴巴集团研究院创建，旨在深耕小企业前沿案例、集结全球商业智慧，发现、汇集、分享互联网时代的杰出商业实践。</li>
+</ul>
+<p><strong>百度营销研究院</strong></p>
+<ul>
+<li>功能介绍：百度营销研究院作为互联网营销领先探索者，创新、沉淀、分享基于百度平台数字营销方法论，与业界知名专家学者共同探讨前瞻性的营销趋势及突破性的营销实践，率先发布数字营销行业标准、方法论。为业界专家、品牌广告主、代理公司提供最具有价值的创新营销建议。</li>
+<li>账号主体：百度在线网络技术（北京）有限公司</li>
+<li>商标保护：百度。</li>
+</ul>
+<p><strong>腾讯研究院：cyberlawrc</strong></p>
+<ul>
+<li>功能介绍：【腾讯研究院 ★ Tencent Research Institute】网聚智慧，连接世界！网络互联网前沿理念、传递互联网发展声音、汇集互联网研究成果、推动互联网法治进程。</li>
+<li>账号主体：深圳市腾讯计算机系统有限公司。</li>
+</ul>
+<p><strong>道哥的黑板报：taoasay</strong></p>
+<ul>
+<li>功能介绍：我偶然发现了隐藏在这个世界背后的真相，可惜这里的空白太小了，我没有办法写下来。想知道吗？请每天来看看吧？关注互联网、黑客、创业、技术、历史、文化，可能还有美女哦。</li>
+<li>腾讯微博：来自腾讯微博认证资料：吴翰清，《白帽子讲Web安全》作者，安全宝联合产品副总裁，前阿里巴巴集团高级安全专家。 @axis</li>
+</ul>
+<blockquote>
+<p>道哥现在已经回到阿里巴巴集团安全部，出任研究员（P10），云盾负责人，新浪微博 @<a href="http://weibo.com/u/1707085527" target="_blank" rel="external">aullik5</a>，博客：<a href="http://hi.baidu.com/new/aullik5" target="_blank" rel="external">大风起兮云飞扬_百度空間</a>。</p>
+</blockquote>
+<p><strong>二爷鉴书：findbook</strong></p>
+<ul>
+<li>功能介绍：第一时间向大家推荐好书和介绍，同时坚决揭露烂书，以IT、互联网行业为主。个人品味，仅供参考。输入[his]命令可以查看往期历史。</li>
+</ul>
+<p><strong>IT鉴书</strong></p>
+<ul>
+<li>推荐专业IT图书，我们将根据推荐图书提供最新技术资讯。</li>
+<li>账号主体：北京奥维博世图书发行有限公司。</li>
+</ul>
+<p><strong>人邮IT书坊：ptpressitbooks</strong></p>
+<ul>
+<li>功能介绍：走在技术最前沿，发布最新新书资讯，分享最新技术文章。</li>
+<li>账号主体：人民邮电出版社。</li>
+</ul>
+<p><strong>图灵教育：turingbooks</strong></p>
+<ul>
+<li>功能介绍：是好书，把我们联系在一起。</li>
+<li>账号主体：<a href="http://www.ituring.com.cn/" target="_blank" rel="external">北京图灵文化发展有限公司</a>。</li>
+<li>客服电话：010-51095181-605。</li>
+</ul>
+<p><strong>LinkedIn中国：LinkedIn-China</strong></p>
+<ul>
+<li>功能介绍：LinkedIn（领英）创建于2003年，致力于向全球职场人提供沟通平台，协助他们事半功倍，发挥所长。作为全球最大的职业社交网站，LinkedIn会员人数在世界范围内超过3亿，每个《财富》世界500强公司均有高管加入。</li>
+<li>账号主体：北京领英信息技术有限公司。</li>
+<li>客服电话：4000106277。</li>
+</ul>
+<p><strong>肉饼铺子：robbinthoughts</strong></p>
+<ul>
+<li>功能介绍：肉饼铺子作者robbin是前JavaEye网站创始人，TOPITCLUB互联网俱乐部发起人，移动互联网创业者。robbin希望借助这个平台和大家分享互联网领域的想法、观点和经验，也希望借助这个平台认识更多互联网行业朋友，互相交流和学习。</li>
+</ul>
+<p><strong>投资人子柳：vc-ziliu</strong></p>
+<ul>
+<li>功能介绍：站在投资和创业，科技和人文的十字路口，吹吹牛。</li>
+</ul>
+<p><strong>小道消息：WebNotes</strong></p>
+<ul>
+<li>功能介绍：小道消息，只有小道消息才能拯救中国互联网；只有小道消息才能拯救中国创业者；哦，当然这是一句玩笑话。这里为你分享一些我对互联网的思考和观点，别的地方可能没有的东西。</li>
+<li>账号主体：<a href="http://weibo.com/fenng" target="_blank" rel="external">Fenng</a>，冯大辉，丁香园技术产品负责人。</li>
+</ul>
+<p><strong>移动观察：mobileweb</strong></p>
+<ul>
+<li>功能介绍：如果你没有时间研究移动互联网，我们愿意替你研究。如果你没有时间到世界各地考察移动互联网发展的最新情况，我们愿意替你出去走走。本账号由 @曾航 和 @经纬庄明浩 共同维护。</li>
+</ul>
+<p><strong>青龙老贼：Z_talk</strong></p>
+<ul>
+<li>功能介绍：互联网技术、产品、趋势观察报告，移动互联网创业、创新报道。</li>
+<li>账号主体：青龙老贼，移动互联网资深分析师。</li>
+</ul>
+<p><strong>懒人在思考：lazy-thought</strong></p>
+<ul>
+<li>功能介绍：以黑客那种邪气看待世界。而你，务必保持自己的独立思维。 By <a href="http://evilcos.me/?page_id=6" target="_blank" rel="external">余弦</a></li>
+</ul>
+<p><strong>TimYang:timyang_net</strong></p>
+<ul>
+<li>功能介绍：技术架构评论、技术生活、技术管理随想。</li>
+</ul>
+<p><strong>CSDN：CSDNnews</strong></p>
+<ul>
+<li>功能介绍：CSDN精彩内容每日推荐。我们关注IT产品研发背后的那些人、技术和故事。</li>
+<li>腾讯微博：来自腾讯微博认证资料：全球最大中文IT社区–CSDN官方微博 @ csdnnews。</li>
+</ul>
+<p><strong>CSDN云计算：CSDNcloud</strong></p>
+<ul>
+<li>功能介绍：CSDN作为国内最专业的云计算服务平台，提供云计算、大数据、虚拟化、数据中心、OpenStack、CloudStack、Hadoop、Spark、机器学习、智能算法等相关云计算观点，云计算技术，云计算平台，云计算实践，云计算产业咨询等服务。</li>
+<li>账号主体：北京创新乐知信息技术有限公司。</li>
+<li>商标保护：CSDN。</li>
+</ul>
+<p><strong>CSDN大数据：csdnbigdata</strong></p>
+<ul>
+<li>功能介绍：CSDN分享Hadoop、Spark、NoSQL/NewSQL、HBase、Impala、内存计算、流计算、机器学习和智能算法等相关大数据观点，提供云计算和大数据技术、平台、实践和产业信息等服务。</li>
+</ul>
+<p><strong>developerWorks：developerWorks</strong></p>
+<ul>
+<li>功能介绍：我们的产品：<a href="http://weekly.manong.io/" target="_blank" rel="external">《码农周刊》</a>、<a href="http://toutiao.io/" target="_blank" rel="external">《开发者头条》</a>。</li>
+</ul>
+<p><strong>dockerpool：dockerpool</strong></p>
+<ul>
+<li>功能介绍：dockerpool官方账号，最专业的docker技术交流社区，专注dockers核心技术和热点方向。定期发布，欢迎关注。</li>
+</ul>
+<p><strong>慕课网：imooc815</strong></p>
+<ul>
+<li>功能介绍：慕课网是一个超酷的互联网、IT技术免费学习平台，创新的网络一站式学习、实践体验；服务及时贴心，内容专业、有趣易学。专注服务互联网工程师快速成为技术高手！</li>
+<li>账号主体：北京慕课科技中心（有限合伙）</li>
+</ul>
+<p><strong>慕课网imooc：imooc-com</strong></p>
+<ul>
+<li>功能介绍：<a href="http://www.imooc.com/" target="_blank" rel="external">慕课网</a>官网微信公众平台。免费的IT技术视频学习、分享网站。可以学习在线编程、前端开发技术、PHP、JAVA、C++、安卓和IOS开发等互联网技术。名企技术牛人+理论+案例+视频讲解+在线编程，学习可以很简单！</li>
+<li>账号主体：北京慕课科技中心（有限合伙）。</li>
+</ul>
+<p><strong>MOOC学院：GuokrMOOC</strong></p>
+<ul>
+<li>功能介绍：MOOC学院是果壳网旗下产品。为中文MOOC（大规模公开的在线课程）学习者打造社会化学习平台。</li>
+<li>腾讯微博：来自腾讯微博认证资料：果壳网旗下产品MOOC学院官方微博（<a href="http://mooc.guokr.com/" target="_blank" rel="external">mooc.guokr.com/</a>）@<a href="http://weibo.com/guokrmooc" target="_blank" rel="external">MOOC学院</a></li>
+</ul>
+<hr>
+<h3 id="贴两篇我在知乎上面关于这方面的回答">贴两篇我在知乎上面关于这方面的回答</h3><ul>
+<li><a href="http://www.zhihu.com/question/29693016/answer/45259867" target="_blank" rel="external">互联网求职路上，你见过哪些写得很好、很用心的面经？最好能分享自己的面经、心路历程</a></li>
+<li><a href="http://www.zhihu.com/question/26350691/answer/42692522" target="_blank" rel="external">阿里 Java 校招对本科生有什么要求？</a></li>
+</ul>
+<h3 id="最后送大家一些话">最后送大家一些话</h3><hr>
+<blockquote>
+<ol>
+<li>基础很重要,所有高大上的技术都建立在基础之上</li>
+<li>坚持自己的道路，不要半途而废。</li>
+<li>多接触优秀的人,人以类聚,物以群分！</li>
+<li>运气很重要,你再厉害！运气不好都是浮云</li>
+<li>越努力，越幸运！</li>
+</ol>
+<p>禁止转载！！若私自转载者，我将利用法律武器维护自己的权益！</p>
+</blockquote>
+
+      
+    </div>
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/java/" rel="tag">#java</a>
+          
+            <a href="/tags/技术心得/" rel="tag">#技术心得</a>
+          
+        </div>
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+          </div>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2015/12/06/深入java单例模式/" rel="prev" title="深入java单例模式">
+                深入java单例模式 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </article>
+
+
+
+    <div class="post-spread">
+      
+        <div class="ds-share flat" data-thread-key="2015/04/26/技术文字/"
+     data-title="技术文字"
+     data-content=""
+     data-url="http://zhaodong.duapp.com/2015/04/26/技术文字/">
+  <div class="ds-share-inline">
+    <ul  class="ds-share-icons-16">
+
+      <li data-toggle="ds-share-icons-more"><a class="ds-more" href="javascript:void(0);">分享到：</a></li>
+      <li><a class="ds-weibo" href="javascript:void(0);" data-service="weibo">微博</a></li>
+      <li><a class="ds-qzone" href="javascript:void(0);" data-service="qzone">QQ空间</a></li>
+      <li><a class="ds-qqt" href="javascript:void(0);" data-service="qqt">腾讯微博</a></li>
+      <li><a class="ds-wechat" href="javascript:void(0);" data-service="wechat">微信</a></li>
+
+    </ul>
+    <div class="ds-share-icons-more">
+    </div>
+  </div>
+</div>
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+  <div class="comments" id="comments">
+    
+      <div class="ds-thread" data-thread-key="2015/04/26/技术文字/"
+           data-title="技术文字" data-url="http://zhaodong.duapp.com/2015/04/26/技术文字/">
+      </div>
+    
+  </div>
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap" >
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview sidebar-panel ">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+          <img class="site-author-image" itemprop="image"
+               src="/images/avator.jpg"
+               alt="谢照东" />
+          <p class="site-author-name" itemprop="name">谢照东</p>
+          <p class="site-description motion-element" itemprop="description">我没有梦想，但是我有一个野心！</p>
+        </div>
+        <nav class="site-state motion-element">
+          <div class="site-state-item site-state-posts">
+            <a href="/archives">
+              <span class="site-state-item-count">5</span>
+              <span class="site-state-item-name">日志</span>
+            </a>
+          </div>
+
+          <div class="site-state-item site-state-categories">
+            <a href="/categories">
+              <span class="site-state-item-count">10</span>
+              <span class="site-state-item-name">分类</span>
+              </a>
+          </div>
+
+          <div class="site-state-item site-state-tags">
+            <a href="/tags">
+              <span class="site-state-item-count">10</span>
+              <span class="site-state-item-name">标签</span>
+              </a>
+          </div>
+
+        </nav>
+
+        
+          <div class="feed-link motion-element">
+            <a href="/atom.xml" rel="alternate">
+              <i class="fa fa-rss"></i>
+              RSS
+            </a>
+          </div>
+        
+
+        <div class="links-of-author motion-element">
+          
+            
+              <span class="links-of-author-item">
+                <a href="https://github.com/xiexiaodong" target="_blank">
+                  
+                    <i class="fa fa-github"></i> GitHub
+                  
+                </a>
+              </span>
+            
+              <span class="links-of-author-item">
+                <a href="http://weibo.com/u/2571066903" target="_blank">
+                  
+                    <i class="fa fa-globe"></i> 微博
+                  
+                </a>
+              </span>
+            
+              <span class="links-of-author-item">
+                <a href="http://www.zhihu.com/people/JAVAC" target="_blank">
+                  
+                    <i class="fa fa-globe"></i> 知乎
+                  
+                </a>
+              </span>
+            
+          
+        </div>
+
+        
+        
+
+        <div class="links-of-author motion-element">
+          
+            <p class="site-author-name">links</p>
+            
+              <span class="links-of-author-item">
+                <a href="http://harry.wiki/" target="_blank">Mr.Harry</a>
+              </span>
+            
+              <span class="links-of-author-item">
+                <a href="https://ilulu.xyz/" target="_blank">ilulu</a>
+              </span>
+            
+              <span class="links-of-author-item">
+                <a href="http://wjd1218.github.io/" target="_blank">0-?</a>
+              </span>
+            
+              <span class="links-of-author-item">
+                <a href="http://ios.dog" target="_blank">ios.dog</a>
+              </span>
+            
+              <span class="links-of-author-item">
+                <a href="http://jucsinyu.com" target="_blank">jucsinyu</a>
+              </span>
+            
+          
+        </div>
+
+      </section>
+
+      
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc-indicator-top post-toc-indicator">
+            <i class="fa fa-angle-double-up"></i>
+          </div>
+          <div class="post-toc">
+            
+              
+            
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#一、基础"><span class="nav-number">1.</span> <span class="nav-text">一、基础</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#二、提高"><span class="nav-number">2.</span> <span class="nav-text">二、提高</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#三、深入"><span class="nav-number">3.</span> <span class="nav-text">三、深入</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#我看过的书籍，留个参考！（当然没有全部掌握）"><span class="nav-number">4.</span> <span class="nav-text">我看过的书籍，留个参考！（当然没有全部掌握）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#贴两篇我在知乎上面关于这方面的回答"><span class="nav-number">5.</span> <span class="nav-text">贴两篇我在知乎上面关于这方面的回答</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#最后送大家一些话"><span class="nav-number">6.</span> <span class="nav-text">最后送大家一些话</span></a></li></ol></div>
+            
+          </div>
+          <div class="post-toc-indicator-bottom post-toc-indicator">
+            <i class="fa fa-angle-double-down"></i>
+          </div>
+        </section>
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright" >
+  
+  &copy;  2015 - 
+  <span itemprop="copyrightYear">2016</span>
+  <span class="with-love">
+    <i class="icon-next-heart fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">谢照东</span>
+</div>
+
+<div class="powered-by">
+  由 <a class="theme-link" href="http://hexo.io">Hexo</a> 强力驱动
+</div>
+
+<div class="theme-info">
+  主题 -
+  <a class="theme-link" href="https://github.com/iissnan/hexo-theme-next">
+    NexT.Pisces
+  </a>
+</div>
+
+
+
+      </div>
+    </footer>
+
+    <div class="back-to-top"></div>
+  </div>
+
+  
+
+
+  
+
+
+
+  <script type="text/javascript" src="/vendors/jquery/index.js?v=2.1.3"></script>
+
+  <script type="text/javascript" src="/vendors/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+
+  <script type="text/javascript" src="/vendors/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+
+  <script type="text/javascript" src="/vendors/velocity/velocity.min.js"></script>
+
+  <script type="text/javascript" src="/vendors/velocity/velocity.ui.min.js"></script>
+
+  <script type="text/javascript" src="/vendors/fancybox/source/jquery.fancybox.pack.js"></script>
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.0.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.0.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.0.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.0.0"></script>
+
+
+
+  
+  
+<script type="text/javascript" src="/js/src/scrollspy.js?v=5.0.0"></script>
+
+<script type="text/javascript" id="sidebar.toc.highlight">
+  $(document).ready(function () {
+    var tocSelector = '.post-toc';
+    var $tocSelector = $(tocSelector);
+    var activeCurrentSelector = '.active-current';
+
+    $tocSelector
+      .on('activate.bs.scrollspy', function () {
+        var $currentActiveElement = $(tocSelector + ' .active').last();
+
+        removeCurrentActiveClass();
+        $currentActiveElement.addClass('active-current');
+
+        $tocSelector[0].scrollTop = $currentActiveElement.position().top;
+      })
+      .on('clear.bs.scrollspy', function () {
+        removeCurrentActiveClass();
+      });
+
+    function removeCurrentActiveClass () {
+      $(tocSelector + ' ' + activeCurrentSelector)
+        .removeClass(activeCurrentSelector.substring(1));
+    }
+
+    function processTOC () {
+      getTOCMaxHeight();
+      toggleTOCOverflowIndicators();
+    }
+
+    function getTOCMaxHeight () {
+      var height = $('.sidebar').height() -
+                   $tocSelector.position().top -
+                   $('.post-toc-indicator-bottom').height();
+
+      $tocSelector.css('height', height);
+
+      return height;
+    }
+
+    function toggleTOCOverflowIndicators () {
+      tocOverflowIndicator(
+        '.post-toc-indicator-top',
+        $tocSelector.scrollTop() > 0 ? 'show' : 'hide'
+      );
+
+      tocOverflowIndicator(
+        '.post-toc-indicator-bottom',
+        $tocSelector.scrollTop() >= $tocSelector.find('ol').height() - $tocSelector.height() ? 'hide' : 'show'
+      )
+    }
+
+    $(document).on('sidebar.motion.complete', function () {
+      processTOC();
+    });
+
+    $('body').scrollspy({ target: tocSelector });
+    $(window).on('resize', function () {
+      if ( $('.sidebar').hasClass('sidebar-active') ) {
+        processTOC();
+      }
+    });
+
+    onScroll($tocSelector);
+
+    function onScroll (element) {
+      element.on('mousewheel DOMMouseScroll', function (event) {
+          var oe = event.originalEvent;
+          var delta = oe.wheelDelta || -oe.detail;
+
+          this.scrollTop += ( delta < 0 ? 1 : -1 ) * 30;
+          event.preventDefault();
+
+          toggleTOCOverflowIndicators();
+      });
+    }
+
+    function tocOverflowIndicator (indicator, action) {
+      var $indicator = $(indicator);
+      var opacity = action === 'show' ? 1 : 0;
+      $indicator.velocity ?
+        $indicator.velocity('stop').velocity({
+          opacity: opacity
+        }, { duration: 100 }) :
+        $indicator.stop().animate({
+          opacity: opacity
+        }, 100);
+    }
+
+  });
+</script>
+
+<script type="text/javascript" id="sidebar.nav">
+  $(document).ready(function () {
+    var html = $('html');
+    var TAB_ANIMATE_DURATION = 200;
+    var hasVelocity = $.isFunction(html.velocity);
+
+    $('.sidebar-nav li').on('click', function () {
+      var item = $(this);
+      var activeTabClassName = 'sidebar-nav-active';
+      var activePanelClassName = 'sidebar-panel-active';
+      if (item.hasClass(activeTabClassName)) {
+        return;
+      }
+
+      var currentTarget = $('.' + activePanelClassName);
+      var target = $('.' + item.data('target'));
+
+      hasVelocity ?
+        currentTarget.velocity('transition.slideUpOut', TAB_ANIMATE_DURATION, function () {
+          target
+            .velocity('stop')
+            .velocity('transition.slideDownIn', TAB_ANIMATE_DURATION)
+            .addClass(activePanelClassName);
+        }) :
+        currentTarget.animate({ opacity: 0 }, TAB_ANIMATE_DURATION, function () {
+          currentTarget.hide();
+          target
+            .stop()
+            .css({'opacity': 0, 'display': 'block'})
+            .animate({ opacity: 1 }, TAB_ANIMATE_DURATION, function () {
+              currentTarget.removeClass(activePanelClassName);
+              target.addClass(activePanelClassName);
+            });
+        });
+
+      item.siblings().removeClass(activeTabClassName);
+      item.addClass(activeTabClassName);
+    });
+
+    $('.post-toc a').on('click', function (e) {
+      e.preventDefault();
+      var targetSelector = NexT.utils.escapeSelector(this.getAttribute('href'));
+      var offset = $(targetSelector).offset().top;
+      hasVelocity ?
+        html.velocity('stop').velocity('scroll', {
+          offset: offset  + 'px',
+          mobileHA: false
+        }) :
+        $('html, body').stop().animate({
+          scrollTop: offset
+        }, 500);
+    });
+
+    // Expand sidebar on post detail page by default, when post has a toc.
+    NexT.motion.middleWares.sidebar = function () {
+      var $tocContent = $('.post-toc-content');
+
+      if (CONFIG.sidebar === 'post') {
+        if ($tocContent.length > 0 && $tocContent.html().trim().length > 0) {
+          NexT.utils.displaySidebar();
+        }
+      }
+    };
+  });
+</script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.0.0"></script>
+
+
+
+  
+
+  
+    
+  
+
+  <script type="text/javascript">
+    var duoshuoQuery = {short_name:"xiezhaodong"};
+    (function() {
+      var ds = document.createElement('script');
+      ds.type = 'text/javascript';ds.async = true;
+      ds.id = 'duoshuo-script';
+      ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+      ds.charset = 'UTF-8';
+      (document.getElementsByTagName('head')[0]
+      || document.getElementsByTagName('body')[0]).appendChild(ds);
+    })();
+  </script>
+
+  
+    
+  
+
+
+
+
+
+  
+  
+
+  
+  
+
+
+</body>
+</html>
