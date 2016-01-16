@@ -3,9 +3,9 @@
   <title><![CDATA[「浮生若梦」]]></title>
   
   <link href="/atom.xml" rel="self"/>
-  <link href="http://zhaodong.duapp.com/"/>
+  <link href="http://yaccc.github.io/"/>
   <updated>2016-01-10T09:27:23.000Z</updated>
-  <id>http://zhaodong.duapp.com/</id>
+  <id>http://yaccc.github.io/</id>
   
   <author>
     <name><![CDATA[谢照东]]></name>
@@ -16,8 +16,8 @@
   
   <entry>
     <title><![CDATA[高性能IO模型浅析]]></title>
-    <link href="http://zhaodong.duapp.com/2016/01/10/%E9%AB%98%E6%80%A7%E8%83%BDIO%E6%A8%A1%E5%9E%8B%E6%B5%85%E6%9E%90/"/>
-    <id>http://zhaodong.duapp.com/2016/01/10/高性能IO模型浅析/</id>
+    <link href="http://yaccc.github.io/2016/01/10/%E9%AB%98%E6%80%A7%E8%83%BDIO%E6%A8%A1%E5%9E%8B%E6%B5%85%E6%9E%90/"/>
+    <id>http://yaccc.github.io/2016/01/10/高性能IO模型浅析/</id>
     <published>2016-01-10T05:52:34.000Z</published>
     <updated>2016-01-10T09:27:23.000Z</updated>
     <content type="html"><![CDATA[<p>服务器端编程经常需要构造高性能的 IO 模型，常见的 IO 模型有四种：</p>
@@ -90,28 +90,28 @@
 <li>同步非阻塞 IO（Non-blocking IO）：默认创建的 socket 都是阻塞的，]]>
     </summary>
     
-      <category term="IO" scheme="http://zhaodong.duapp.com/tags/IO/"/>
+      <category term="IO" scheme="http://yaccc.github.io/tags/IO/"/>
     
-      <category term="Linux" scheme="http://zhaodong.duapp.com/tags/Linux/"/>
+      <category term="Linux" scheme="http://yaccc.github.io/tags/Linux/"/>
     
-      <category term="性能" scheme="http://zhaodong.duapp.com/tags/%E6%80%A7%E8%83%BD/"/>
+      <category term="性能" scheme="http://yaccc.github.io/tags/%E6%80%A7%E8%83%BD/"/>
     
-      <category term="网络" scheme="http://zhaodong.duapp.com/tags/%E7%BD%91%E7%BB%9C/"/>
+      <category term="网络" scheme="http://yaccc.github.io/tags/%E7%BD%91%E7%BB%9C/"/>
     
-      <category term="IO" scheme="http://zhaodong.duapp.com/categories/IO/"/>
+      <category term="IO" scheme="http://yaccc.github.io/categories/IO/"/>
     
-      <category term="网络" scheme="http://zhaodong.duapp.com/categories/IO/%E7%BD%91%E7%BB%9C/"/>
+      <category term="网络" scheme="http://yaccc.github.io/categories/IO/%E7%BD%91%E7%BB%9C/"/>
     
-      <category term="Linux" scheme="http://zhaodong.duapp.com/categories/IO/%E7%BD%91%E7%BB%9C/Linux/"/>
+      <category term="Linux" scheme="http://yaccc.github.io/categories/IO/%E7%BD%91%E7%BB%9C/Linux/"/>
     
-      <category term="性能" scheme="http://zhaodong.duapp.com/categories/IO/%E7%BD%91%E7%BB%9C/Linux/%E6%80%A7%E8%83%BD/"/>
+      <category term="性能" scheme="http://yaccc.github.io/categories/IO/%E7%BD%91%E7%BB%9C/Linux/%E6%80%A7%E8%83%BD/"/>
     
   </entry>
   
   <entry>
     <title><![CDATA[java中的锁]]></title>
-    <link href="http://zhaodong.duapp.com/2016/01/03/java%E4%B8%AD%E7%9A%84%E9%94%81/"/>
-    <id>http://zhaodong.duapp.com/2016/01/03/java中的锁/</id>
+    <link href="http://yaccc.github.io/2016/01/03/java%E4%B8%AD%E7%9A%84%E9%94%81/"/>
+    <id>http://yaccc.github.io/2016/01/03/java中的锁/</id>
     <published>2016-01-03T13:08:17.000Z</published>
     <updated>2016-01-10T07:22:37.000Z</updated>
     <content type="html"><![CDATA[<p>本文主要从，什么是锁，如何构建一个简单的锁，锁的可重入性，开展讲解~/blog-hexo/source/_posts</p>
@@ -143,28 +143,28 @@
 <h3 id="什么是锁">什么是锁</h3><p>锁像synchronized同步块一样，是一种线程同步机制，但比Java中的synchroniz]]>
     </summary>
     
-      <category term="java" scheme="http://zhaodong.duapp.com/tags/java/"/>
+      <category term="java" scheme="http://yaccc.github.io/tags/java/"/>
     
-      <category term="多线程" scheme="http://zhaodong.duapp.com/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/"/>
+      <category term="多线程" scheme="http://yaccc.github.io/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/"/>
     
-      <category term="并发" scheme="http://zhaodong.duapp.com/tags/%E5%B9%B6%E5%8F%91/"/>
+      <category term="并发" scheme="http://yaccc.github.io/tags/%E5%B9%B6%E5%8F%91/"/>
     
-      <category term="锁" scheme="http://zhaodong.duapp.com/tags/%E9%94%81/"/>
+      <category term="锁" scheme="http://yaccc.github.io/tags/%E9%94%81/"/>
     
-      <category term="java" scheme="http://zhaodong.duapp.com/categories/java/"/>
+      <category term="java" scheme="http://yaccc.github.io/categories/java/"/>
     
-      <category term="多线程" scheme="http://zhaodong.duapp.com/categories/java/%E5%A4%9A%E7%BA%BF%E7%A8%8B/"/>
+      <category term="多线程" scheme="http://yaccc.github.io/categories/java/%E5%A4%9A%E7%BA%BF%E7%A8%8B/"/>
     
-      <category term="并发" scheme="http://zhaodong.duapp.com/categories/java/%E5%A4%9A%E7%BA%BF%E7%A8%8B/%E5%B9%B6%E5%8F%91/"/>
+      <category term="并发" scheme="http://yaccc.github.io/categories/java/%E5%A4%9A%E7%BA%BF%E7%A8%8B/%E5%B9%B6%E5%8F%91/"/>
     
-      <category term="锁" scheme="http://zhaodong.duapp.com/categories/java/%E5%A4%9A%E7%BA%BF%E7%A8%8B/%E5%B9%B6%E5%8F%91/%E9%94%81/"/>
+      <category term="锁" scheme="http://yaccc.github.io/categories/java/%E5%A4%9A%E7%BA%BF%E7%A8%8B/%E5%B9%B6%E5%8F%91/%E9%94%81/"/>
     
   </entry>
   
   <entry>
     <title><![CDATA[如何正确的关闭一个线程]]></title>
-    <link href="http://zhaodong.duapp.com/2015/12/09/%E5%A6%82%E4%BD%95%E6%AD%A3%E7%A1%AE%E7%9A%84%E5%85%B3%E9%97%AD%E4%B8%80%E4%B8%AA%E7%BA%BF%E7%A8%8B/"/>
-    <id>http://zhaodong.duapp.com/2015/12/09/如何正确的关闭一个线程/</id>
+    <link href="http://yaccc.github.io/2015/12/09/%E5%A6%82%E4%BD%95%E6%AD%A3%E7%A1%AE%E7%9A%84%E5%85%B3%E9%97%AD%E4%B8%80%E4%B8%AA%E7%BA%BF%E7%A8%8B/"/>
+    <id>http://yaccc.github.io/2015/12/09/如何正确的关闭一个线程/</id>
     <published>2015-12-09T14:38:26.000Z</published>
     <updated>2016-01-10T07:21:20.000Z</updated>
     <content type="html"><![CDATA[<p>与此问题相关的内容主要涉及三部分：已废弃的Thread.stop()、迷惑的thread.interrupt系列、最佳实践Shared Variable</p>
@@ -253,20 +253,20 @@
 <h2 id="已废弃的Thread-stop()">已废弃的Thread.stop()</h2><figure]]>
     </summary>
     
-      <category term="java" scheme="http://zhaodong.duapp.com/tags/java/"/>
+      <category term="java" scheme="http://yaccc.github.io/tags/java/"/>
     
-      <category term="多线程" scheme="http://zhaodong.duapp.com/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/"/>
+      <category term="多线程" scheme="http://yaccc.github.io/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/"/>
     
-      <category term="java" scheme="http://zhaodong.duapp.com/categories/java/"/>
+      <category term="java" scheme="http://yaccc.github.io/categories/java/"/>
     
-      <category term="多线程" scheme="http://zhaodong.duapp.com/categories/java/%E5%A4%9A%E7%BA%BF%E7%A8%8B/"/>
+      <category term="多线程" scheme="http://yaccc.github.io/categories/java/%E5%A4%9A%E7%BA%BF%E7%A8%8B/"/>
     
   </entry>
   
   <entry>
     <title><![CDATA[深入java单例模式]]></title>
-    <link href="http://zhaodong.duapp.com/2015/12/06/%E6%B7%B1%E5%85%A5java%E5%8D%95%E4%BE%8B%E6%A8%A1%E5%BC%8F/"/>
-    <id>http://zhaodong.duapp.com/2015/12/06/深入java单例模式/</id>
+    <link href="http://yaccc.github.io/2015/12/06/%E6%B7%B1%E5%85%A5java%E5%8D%95%E4%BE%8B%E6%A8%A1%E5%BC%8F/"/>
+    <id>http://yaccc.github.io/2015/12/06/深入java单例模式/</id>
     <published>2015-12-05T16:05:34.000Z</published>
     <updated>2016-01-10T07:21:35.000Z</updated>
     <content type="html"><![CDATA[<h3 id="单例模式简介">单例模式简介</h3><p>在GoF的23种设计模式中，单例模式是比较简单的一种。然而，有时候越是简单的东西越容易出现问题。下面就单例设计模式详细的探讨一下。<br>所谓单例模式，简单来说，就是在整个应用中保证只有一个类的实例存在。就像是Java Web中的application，也就是提供了一个全局变量，用处相当广泛，比如保存全局数据，实现全局性的操作等。</p>
@@ -303,20 +303,20 @@
     <![CDATA[<h3 id="单例模式简介">单例模式简介</h3><p>在GoF的23种设计模式中，单例模式是比较简单的一种。然而，有时候越是简单的东西越容易出现问题。下面就单例设计模式详细的探讨一下。<br>所谓单例模式，简单来说，就是在整个应用中保证只有一个类的实例存在。就像是Java ]]>
     </summary>
     
-      <category term="java" scheme="http://zhaodong.duapp.com/tags/java/"/>
+      <category term="java" scheme="http://yaccc.github.io/tags/java/"/>
     
-      <category term="设计模式" scheme="http://zhaodong.duapp.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="http://yaccc.github.io/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
-      <category term="java" scheme="http://zhaodong.duapp.com/categories/java/"/>
+      <category term="java" scheme="http://yaccc.github.io/categories/java/"/>
     
-      <category term="设计模式" scheme="http://zhaodong.duapp.com/categories/java/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="http://yaccc.github.io/categories/java/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
   </entry>
   
   <entry>
     <title><![CDATA[技术文字]]></title>
-    <link href="http://zhaodong.duapp.com/2015/04/26/%E6%8A%80%E6%9C%AF%E6%96%87%E5%AD%97/"/>
-    <id>http://zhaodong.duapp.com/2015/04/26/技术文字/</id>
+    <link href="http://yaccc.github.io/2015/04/26/%E6%8A%80%E6%9C%AF%E6%96%87%E5%AD%97/"/>
+    <id>http://yaccc.github.io/2015/04/26/技术文字/</id>
     <published>2015-04-26T14:46:18.000Z</published>
     <updated>2016-01-10T07:21:00.000Z</updated>
     <content type="html"><![CDATA[<blockquote>
@@ -747,11 +747,11 @@
 <l]]>
     </summary>
     
-      <category term="java" scheme="http://zhaodong.duapp.com/tags/java/"/>
+      <category term="java" scheme="http://yaccc.github.io/tags/java/"/>
     
-      <category term="技术心得" scheme="http://zhaodong.duapp.com/tags/%E6%8A%80%E6%9C%AF%E5%BF%83%E5%BE%97/"/>
+      <category term="技术心得" scheme="http://yaccc.github.io/tags/%E6%8A%80%E6%9C%AF%E5%BF%83%E5%BE%97/"/>
     
-      <category term="技术、心得" scheme="http://zhaodong.duapp.com/categories/%E6%8A%80%E6%9C%AF%E3%80%81%E5%BF%83%E5%BE%97/"/>
+      <category term="技术、心得" scheme="http://yaccc.github.io/categories/%E6%8A%80%E6%9C%AF%E3%80%81%E5%BF%83%E5%BE%97/"/>
     
   </entry>
   
