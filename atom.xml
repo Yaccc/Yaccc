@@ -4,7 +4,7 @@
   
   <link href="/atom.xml" rel="self"/>
   <link href="http://yaccc.github.io/"/>
-  <updated>2016-01-29T18:13:44.000Z</updated>
+  <updated>2016-01-30T07:06:05.000Z</updated>
   <id>http://yaccc.github.io/</id>
   
   <author>
@@ -15,11 +15,110 @@
   <generator uri="http://hexo.io/">Hexo</generator>
   
   <entry>
+    <title><![CDATA[关于序列化协议的思考]]></title>
+    <link href="http://yaccc.github.io/2016/01/30/%E5%85%B3%E4%BA%8E%E5%BA%8F%E5%88%97%E5%8C%96%E5%8D%8F%E8%AE%AE%E7%9A%84%E6%80%9D%E8%80%83/"/>
+    <id>http://yaccc.github.io/2016/01/30/关于序列化协议的思考/</id>
+    <published>2016-01-30T07:00:23.000Z</published>
+    <updated>2016-01-30T07:06:05.000Z</updated>
+    <content type="html"><![CDATA[<h4 id="思考">思考</h4><p>最近在设计一个RPC框架，需要处理序列化的问题。有很多种序列化协议可以选择，比如Java原生的序列化协议，Protobuf, Thrift, Hessian, Kryo等等，这里说的序列化协议专指Java的基于二进制的协议，不是基于XML, JSON这种格式的协议。在实际开发中考虑了很多点，也遇到一些问题，拿出来说说。</p>
+<blockquote>
+<p>抛开这些协议不说，结合实际的需求，一个理想的序列化协议至少考虑4个方面：</p>
+</blockquote>
+<ol>
+<li>性能</li>
+<li>是否支持被序列化对象新旧版本的兼容性问题。这个需求在实际开发中经常遇到，比如发布了一个服务，有很多客户端使用。当服务需要修改，新 添加1个参数时，不可能要求所有客户端都更新，那样牵扯的面太大，所以要做到新旧版本的兼容</li>
+<li>是否可以直接序列化对象，而不需要额外的辅助类，比如用IDL生成辅助的序列化类</li>
+<li>是否可以支持跨语言使用</li>
+</ol>
+<h4 id="性能">性能</h4><p>性能包括两个方面，时间复杂度和空间复杂度。</p>
+<ol>
+<li>空间开销,序列化需要在原有的数据上加上描述字段，以为反序列化解析之用。如果序列化过程引入的额外开销过高，可能会导致过大的网络，磁盘等各方面的压力。对于海量分布式存储系统，数据量往往以TB为单位，巨大的的额外空间开销意味着高昂的成本。</li>
+<li>时间开销，复杂的序列化协议会导致较长的解析时间，这可能会使得序列化和反序列化阶段成为整个系统的瓶颈。</li>
+</ol>
+<p>经过上述，我们可以知道:序列化这件事说白了就是把一个对象变成一个二进制流，然后把二进制流再转化成对象的过程。前者好说，关键是后者，后者其实就是一个如何分帧(Frame)的问题，即从哪个字节开始读几个字节来还原成数据的问题。常见的分帧方式有：</p>
+<blockquote>
+<ol>
+<li>加结束符，比如http协议</li>
+<li>定长</li>
+<li>消息头+消息，消息头可以包含长度，类型信息</li>
+</ol>
+</blockquote>
+<h4 id="需要考虑的问题">需要考虑的问题</h4><p>对于Java序列化来说，肯定是第三种方式，但是如何设计这个分帧方式又有很多实现。下面说说上述具体有哪些考虑和问题。</p>
+<ol>
+<li><p>第一是序列化后的字节数大小。最优的序列化后的字节数大小肯定是只有数据的二进制流，这样没有任何多余的分帧信息。如果要做到在二进制流里不加任何分帧信息来反序列化二进制流，有两个关键点：</p>
+<blockquote>
+<ol>
+<li>确定具体的分帧方式</li>
+<li>肯定要有个地方存放这个分帧方式，并且是序列化方和反序列化方都能拿到。</li>
+</ol>
+</blockquote>
+<p> 我把这个双方约定分帧方式叫做契约。实际操作的时候只需要序列化方按照契约把对象的数据转成二进制流，反序列化方按照契约把二进制流转成对象数据。<br>如果二进制流里面不加任何的分帧信息，那么反序列化方只能按照字段的顺序来依次分帧。理解一下这句话，如果单纯拿到一个只有纯数据的二进制流，那么只能按照约定的顺序依次来读取，并且还得知道每个字段的长度，这样才能知道读取几个字节来还原数据。在这里把顺序本身作为一个隐形的契约，双方按照顺序来读写。一旦顺序错了，就有可能发生反序列化的错误。</p>
+</li>
+<li><p>如果我们要字节数大小尽量小，那么我们第一想到的是把分帧信息不放在二进制流中，我们很自然而然想到被序列化对象的Class对象是最自然的选择，而且它还包含了字段的信息，Class.getDeclaredFields()可以返回类的所有实例字段。如果getDeclaredFields()方法返回的字段在任意JVM上都是同样的顺序，那么我们岂不就是可以指依靠序列化反序列化双方拿到被序列化的Class对象，然后利用反射机制拿到字段信息就可以实现最优的序列化后字节数大小吗？<br>但是经过我的调研发现，利用反射技术Class.getDeclared()方法返回的字段数组是没有排序也没有特定顺序的，比如按照声明的顺序。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="annotation">@CallerSensitive</span>  </span><br><span class="line">    <span class="keyword">public</span> Field[] getDeclaredFields() <span class="keyword">throws</span> SecurityException &#123;  </span><br><span class="line">        <span class="comment">// be very careful not to change the stack depth of this  </span></span><br><span class="line">        <span class="comment">// checkMemberAccess call for security reasons  </span></span><br><span class="line">        <span class="comment">// see java.lang.SecurityManager.checkMemberAccess  </span></span><br><span class="line">        checkMemberAccess(Member.DECLARED, Reflection.getCallerClass(), <span class="keyword">true</span>);  </span><br><span class="line">        <span class="keyword">return</span> copyFields(privateGetDeclaredFields(<span class="keyword">false</span>));  </span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>那不能利用反射技术获得字段顺序，能不能利用字节码技术来获得这个类声明时存放的字段顺序呢？比如用ASM来直接读Class文件。但是我查阅了Java虚拟机规范，虚拟机规范只规定了Class文件中的元素，并没有要求实际存储的Filed[]按照声明顺序存储。这也是对的，实际的虚拟机实现可以按照各自的算法来优化。<br><img src="/img/class.png" alt=""><br>事实上目前没有哪个协议做到最优的序列化后字节数，间接证明了只使用Class元数据来分帧是不能满足所有平台的，是不可靠的。</p>
+<h4 id="解决方案">解决方案</h4><blockquote>
+<p>既然顺序这种弱契约关系不可靠，那么需要一种强契约关系，需要把一些分帧信息加入到二进制流，然后通过某种方式来获取这些分帧信息。加入哪些分帧信息和如何共享这些分帧信息有几种做法：</p>
+</blockquote>
+<ol>
+<li>Java原生的序列化协议把字段类型信息用字符串格式写到了二进制流里面，这样反序列化方就可以根据字段信息来反序列化。但是Java原生的序列化协议最大的问题就是生成的字节流太大</li>
+<li>Hessian, Kryo这些协议不需要借助中间文件，直接把分帧信息写入了二进制流，并且没有使用字符串来存放，而是定义了特定的格式来表示这些类型信息。Hessian, Kryo生成的字节流就优化了很多，尤其是Kryo，生成的字节流大小甚至可以优于Protobuf.</li>
+<li>Protobuf和Thrift利用IDL来生成中间文件，这些中间文件包含了如何分帧的信息，比如Thrift给每个字段生成了元数据，包含了顺序信息（加了id信息），和类型信息，实际写的二进制流里面包含了每个字段id, 类型，长度等分帧信息。序列化方和反序列化方共享这些中间文件来进行序列化操作。</li>
+</ol>
+<p>常见的应用是这样的<br><img src="/img/idl.jpg" alt=""></p>
+<h4 id="存在的问题">存在的问题</h4><p>Hessian, Kryo, Protobuf, Thrift在生成的字节数都有了优化，并且可以只发送部分设置了值的字段信息来完成序列化，这样节省的字节数就更多了。但是还有些问题：</p>
+<ol>
+<li>Hessian, Kryo不满足第三个方面，支持被序列化对象的新旧版本兼容，只依靠Class信息没有办法知道新旧Class的区别</li>
+<li>Protobuf和Thrift已经很优化了，但是需要用IDL来生成静态的中间文件。</li>
+<li>版本问题，比如服务方给方法的参数新增加了一个字段，要能做到老的客户端还可以使用这个新服务。这就要求序列化协议读取到不能识别的字段后能够处理异常。比如Thrift可以通过字段的id信息来知道是否支持这个字段，如果不支持读取，就跳过，从而做到新旧版本的兼容。而Kryo这种不依赖中间文件的协议很难做到这点，因为单纯的Class信息在不同的平台下字段顺序是不确定的，并且同一个Java文件在不同平台下编译后的Class文件中，字段信息也是不确定的。<h4 id="常见序列化性能和开销对比">常见序列化性能和开销对比</h4></li>
+<li>解析性能<br><img src="/img/xingneng.png" alt=""> </li>
+<li>空间开销<br><img src="/img/kaixiao.png" alt=""></li>
+</ol>
+<h4 id="总结">总结</h4><p>不依赖中间文件来序列化并同时满足前3点，从上面的分析来看很难做到。Protobuf和Thrift这种使用IDL来生产中间文件的协议，除了从跨平台调用的角度的需要，也包含了序列化的需要。毕竟又要考虑跨语言，又想得到效率，明显是不可能的。只有通过牺牲我们自己的时间去创建IDL文件来达到我们的目的。</p>
+<p>参考文章</p>
+<ul>
+<li><a href="http://blog.csdn.net/iter_zc/article/details/40794845" target="_blank" rel="external">http://blog.csdn.net/iter_zc/article/details/40794845</a></li>
+<li><a href="http://www.infoq.com/cn/articles/serialization-and-deserialization" target="_blank" rel="external">http://www.infoq.com/cn/articles/serialization-and-deserialization</a></li>
+</ul>
+]]></content>
+    <summary type="html">
+    <![CDATA[<h4 id="思考">思考</h4><p>最近在设计一个RPC框架，需要处理序列化的问题。有很多种序列化协议可以选择，比如Java原生的序列化协议，Protobuf, Thrift, Hessian, Kryo等等，这里说的序列化协议专指Java的基于二进制的协议，不是基于XM]]>
+    </summary>
+    
+      <category term="java" scheme="http://yaccc.github.io/tags/java/"/>
+    
+      <category term="kryo" scheme="http://yaccc.github.io/tags/kryo/"/>
+    
+      <category term="protobuf" scheme="http://yaccc.github.io/tags/protobuf/"/>
+    
+      <category term="协议" scheme="http://yaccc.github.io/tags/%E5%8D%8F%E8%AE%AE/"/>
+    
+      <category term="序列化" scheme="http://yaccc.github.io/tags/%E5%BA%8F%E5%88%97%E5%8C%96/"/>
+    
+      <category term="性能" scheme="http://yaccc.github.io/tags/%E6%80%A7%E8%83%BD/"/>
+    
+      <category term="java" scheme="http://yaccc.github.io/categories/java/"/>
+    
+      <category term="序列化" scheme="http://yaccc.github.io/categories/java/%E5%BA%8F%E5%88%97%E5%8C%96/"/>
+    
+      <category term="协议" scheme="http://yaccc.github.io/categories/java/%E5%BA%8F%E5%88%97%E5%8C%96/%E5%8D%8F%E8%AE%AE/"/>
+    
+      <category term="性能" scheme="http://yaccc.github.io/categories/java/%E5%BA%8F%E5%88%97%E5%8C%96/%E5%8D%8F%E8%AE%AE/%E6%80%A7%E8%83%BD/"/>
+    
+      <category term="protobuf" scheme="http://yaccc.github.io/categories/java/%E5%BA%8F%E5%88%97%E5%8C%96/%E5%8D%8F%E8%AE%AE/%E6%80%A7%E8%83%BD/protobuf/"/>
+    
+      <category term="kryo" scheme="http://yaccc.github.io/categories/java/%E5%BA%8F%E5%88%97%E5%8C%96/%E5%8D%8F%E8%AE%AE/%E6%80%A7%E8%83%BD/protobuf/kryo/"/>
+    
+  </entry>
+  
+  <entry>
     <title><![CDATA[浅析Google Guava中concurrent下的Monitor和Future特性]]></title>
     <link href="http://yaccc.github.io/2016/01/30/%E6%B5%85%E6%9E%90Google-Guava%E4%B8%ADconcurrent%E4%B8%8B%E7%9A%84Monitor%E5%92%8CFuture%E7%89%B9%E6%80%A7/"/>
     <id>http://yaccc.github.io/2016/01/30/浅析Google-Guava中concurrent下的Monitor和Future特性/</id>
     <published>2016-01-29T18:00:51.000Z</published>
-    <updated>2016-01-29T18:13:44.000Z</updated>
+    <updated>2016-01-30T07:02:14.000Z</updated>
     <content type="html"><![CDATA[<h3 id="关于Monitor">关于Monitor</h3><blockquote>
 <p>A synchronization abstraction supporting waiting on arbitrary boolean conditions</p>
 </blockquote>
@@ -85,11 +184,13 @@
     
       <category term="java" scheme="http://yaccc.github.io/categories/java/"/>
     
-      <category term="并发，guava" scheme="http://yaccc.github.io/categories/java/%E5%B9%B6%E5%8F%91%EF%BC%8Cguava/"/>
+      <category term="并发" scheme="http://yaccc.github.io/categories/java/%E5%B9%B6%E5%8F%91/"/>
     
-      <category term="锁" scheme="http://yaccc.github.io/categories/java/%E5%B9%B6%E5%8F%91%EF%BC%8Cguava/%E9%94%81/"/>
+      <category term="guava" scheme="http://yaccc.github.io/categories/java/%E5%B9%B6%E5%8F%91/guava/"/>
     
-      <category term="异步编程" scheme="http://yaccc.github.io/categories/java/%E5%B9%B6%E5%8F%91%EF%BC%8Cguava/%E9%94%81/%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B/"/>
+      <category term="锁" scheme="http://yaccc.github.io/categories/java/%E5%B9%B6%E5%8F%91/guava/%E9%94%81/"/>
+    
+      <category term="异步编程" scheme="http://yaccc.github.io/categories/java/%E5%B9%B6%E5%8F%91/guava/%E9%94%81/%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B/"/>
     
   </entry>
   

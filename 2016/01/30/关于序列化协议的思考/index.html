@@ -1,0 +1,941 @@
+<!doctype html>
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+  <link href="/vendors/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css"/>
+
+
+
+
+  <link href="//fonts.googleapis.com/css?family=Lato:300,400,700,400italic&subset=latin,latin-ext" rel="stylesheet" type="text/css">
+
+
+
+<link href="/vendors/font-awesome/css/font-awesome.min.css?v=4.4.0" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.0.0" rel="stylesheet" type="text/css" />
+
+
+  <meta name="keywords" content="java,kryo,protobuf,协议,序列化,性能," />
+
+
+
+
+
+  <link rel="alternate" href="/atom.xml" title="「浮生若梦」" type="application/atom+xml" />
+
+
+
+
+  <link rel="shortcut icon" type="image/x-icon" href="/images/avator.jpg?v=5.0.0" />
+
+
+
+
+
+
+<meta name="description" content="思考最近在设计一个RPC框架，需要处理序列化的问题。有很多种序列化协议可以选择，比如Java原生的序列化协议，Protobuf, Thrift, Hessian, Kryo等等，这里说的序列化协议专指Java的基于二进制的协议，不是基于XML, JSON这种格式的协议。在实际开发中考虑了很多点，也遇到一些问题，拿出来说说。
+
+抛开这些协议不说，结合实际的需求，一个理想的序列化协议至少考虑4个方面：">
+<meta property="og:type" content="article">
+<meta property="og:title" content="关于序列化协议的思考">
+<meta property="og:url" content="http://yaccc.github.io/2016/01/30/关于序列化协议的思考/index.html">
+<meta property="og:site_name" content="「浮生若梦」">
+<meta property="og:description" content="思考最近在设计一个RPC框架，需要处理序列化的问题。有很多种序列化协议可以选择，比如Java原生的序列化协议，Protobuf, Thrift, Hessian, Kryo等等，这里说的序列化协议专指Java的基于二进制的协议，不是基于XML, JSON这种格式的协议。在实际开发中考虑了很多点，也遇到一些问题，拿出来说说。
+
+抛开这些协议不说，结合实际的需求，一个理想的序列化协议至少考虑4个方面：">
+<meta property="og:image" content="http://yaccc.github.io/img/class.png">
+<meta property="og:image" content="http://yaccc.github.io/img/idl.jpg">
+<meta property="og:image" content="http://yaccc.github.io/img/xingneng.png">
+<meta property="og:image" content="http://yaccc.github.io/img/kaixiao.png">
+<meta property="og:updated_time" content="2016-01-30T07:06:05.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="关于序列化协议的思考">
+<meta name="twitter:description" content="思考最近在设计一个RPC框架，需要处理序列化的问题。有很多种序列化协议可以选择，比如Java原生的序列化协议，Protobuf, Thrift, Hessian, Kryo等等，这里说的序列化协议专指Java的基于二进制的协议，不是基于XML, JSON这种格式的协议。在实际开发中考虑了很多点，也遇到一些问题，拿出来说说。
+
+抛开这些协议不说，结合实际的需求，一个理想的序列化协议至少考虑4个方面：">
+
+
+
+<script type="text/javascript" id="hexo.configuration">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    scheme: 'Pisces',
+    sidebar: '[object Object]',
+    fancybox: true,
+    motion: true,
+    duoshuo: {
+      userId: 0,
+      author: '博主'
+    }
+  };
+</script>
+
+  <title> 关于序列化协议的思考 | 「浮生若梦」 </title>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+
+
+
+
+
+
+  
+  
+    
+  
+
+  <div class="container one-collumn sidebar-position-left page-post-detail ">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-meta ">
+  
+
+  <div class="custom-logo-site-title">
+    <a href="/"  class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <span class="site-title">「浮生若梦」</span>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+  <p class="site-subtitle"></p>
+</div>
+
+<div class="site-nav-toggle">
+  <button>
+    <span class="btn-bar"></span>
+    <span class="btn-bar"></span>
+    <span class="btn-bar"></span>
+  </button>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu ">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-home fa-fw"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories" rel="section">
+            
+              <i class="menu-item-icon fa fa-th fa-fw"></i> <br />
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about" rel="section">
+            
+              <i class="menu-item-icon fa fa-user fa-fw"></i> <br />
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives" rel="section">
+            
+              <i class="menu-item-icon fa fa-archive fa-fw"></i> <br />
+            
+            归档
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags" rel="section">
+            
+              <i class="menu-item-icon fa fa-tags fa-fw"></i> <br />
+            
+            标签
+          </a>
+        </li>
+      
+
+      
+      
+      
+    </ul>
+  
+
+  
+</nav>
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal " itemscope itemtype="http://schema.org/Article">
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+            
+            
+              
+                关于序列化协议的思考
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            <span class="post-meta-item-icon">
+              <i class="fa fa-calendar-o"></i>
+            </span>
+            <span class="post-meta-item-text">发表于</span>
+            <time itemprop="dateCreated" datetime="2016-01-30T15:00:23+08:00" content="2016-01-30">
+              2016-01-30
+            </time>
+          </span>
+
+          
+            <span class="post-category" >
+              &nbsp; | &nbsp;
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+              
+                <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
+                  <a href="/categories/java/" itemprop="url" rel="index">
+                    <span itemprop="name">java</span>
+                  </a>
+                </span>
+
+                
+                
+                  ， 
+                
+
+              
+                <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
+                  <a href="/categories/java/序列化/" itemprop="url" rel="index">
+                    <span itemprop="name">序列化</span>
+                  </a>
+                </span>
+
+                
+                
+                  ， 
+                
+
+              
+                <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
+                  <a href="/categories/java/序列化/协议/" itemprop="url" rel="index">
+                    <span itemprop="name">协议</span>
+                  </a>
+                </span>
+
+                
+                
+                  ， 
+                
+
+              
+                <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
+                  <a href="/categories/java/序列化/协议/性能/" itemprop="url" rel="index">
+                    <span itemprop="name">性能</span>
+                  </a>
+                </span>
+
+                
+                
+                  ， 
+                
+
+              
+                <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
+                  <a href="/categories/java/序列化/协议/性能/protobuf/" itemprop="url" rel="index">
+                    <span itemprop="name">protobuf</span>
+                  </a>
+                </span>
+
+                
+                
+                  ， 
+                
+
+              
+                <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
+                  <a href="/categories/java/序列化/协议/性能/protobuf/kryo/" itemprop="url" rel="index">
+                    <span itemprop="name">kryo</span>
+                  </a>
+                </span>
+
+                
+                
+
+              
+            </span>
+          
+
+          
+            
+              <span class="post-comments-count">
+                &nbsp; | &nbsp;
+                <a href="/2016/01/30/关于序列化协议的思考/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count ds-thread-count" data-thread-key="2016/01/30/关于序列化协议的思考/" itemprop="commentsCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+
+          
+          
+        </div>
+      </header>
+    
+
+
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h4 id="思考">思考</h4><p>最近在设计一个RPC框架，需要处理序列化的问题。有很多种序列化协议可以选择，比如Java原生的序列化协议，Protobuf, Thrift, Hessian, Kryo等等，这里说的序列化协议专指Java的基于二进制的协议，不是基于XML, JSON这种格式的协议。在实际开发中考虑了很多点，也遇到一些问题，拿出来说说。</p>
+<blockquote>
+<p>抛开这些协议不说，结合实际的需求，一个理想的序列化协议至少考虑4个方面：</p>
+</blockquote>
+<ol>
+<li>性能</li>
+<li>是否支持被序列化对象新旧版本的兼容性问题。这个需求在实际开发中经常遇到，比如发布了一个服务，有很多客户端使用。当服务需要修改，新 添加1个参数时，不可能要求所有客户端都更新，那样牵扯的面太大，所以要做到新旧版本的兼容</li>
+<li>是否可以直接序列化对象，而不需要额外的辅助类，比如用IDL生成辅助的序列化类</li>
+<li>是否可以支持跨语言使用</li>
+</ol>
+<h4 id="性能">性能</h4><p>性能包括两个方面，时间复杂度和空间复杂度。</p>
+<ol>
+<li>空间开销,序列化需要在原有的数据上加上描述字段，以为反序列化解析之用。如果序列化过程引入的额外开销过高，可能会导致过大的网络，磁盘等各方面的压力。对于海量分布式存储系统，数据量往往以TB为单位，巨大的的额外空间开销意味着高昂的成本。</li>
+<li>时间开销，复杂的序列化协议会导致较长的解析时间，这可能会使得序列化和反序列化阶段成为整个系统的瓶颈。</li>
+</ol>
+<p>经过上述，我们可以知道:序列化这件事说白了就是把一个对象变成一个二进制流，然后把二进制流再转化成对象的过程。前者好说，关键是后者，后者其实就是一个如何分帧(Frame)的问题，即从哪个字节开始读几个字节来还原成数据的问题。常见的分帧方式有：</p>
+<blockquote>
+<ol>
+<li>加结束符，比如http协议</li>
+<li>定长</li>
+<li>消息头+消息，消息头可以包含长度，类型信息</li>
+</ol>
+</blockquote>
+<h4 id="需要考虑的问题">需要考虑的问题</h4><p>对于Java序列化来说，肯定是第三种方式，但是如何设计这个分帧方式又有很多实现。下面说说上述具体有哪些考虑和问题。</p>
+<ol>
+<li><p>第一是序列化后的字节数大小。最优的序列化后的字节数大小肯定是只有数据的二进制流，这样没有任何多余的分帧信息。如果要做到在二进制流里不加任何分帧信息来反序列化二进制流，有两个关键点：</p>
+<blockquote>
+<ol>
+<li>确定具体的分帧方式</li>
+<li>肯定要有个地方存放这个分帧方式，并且是序列化方和反序列化方都能拿到。</li>
+</ol>
+</blockquote>
+<p> 我把这个双方约定分帧方式叫做契约。实际操作的时候只需要序列化方按照契约把对象的数据转成二进制流，反序列化方按照契约把二进制流转成对象数据。<br>如果二进制流里面不加任何的分帧信息，那么反序列化方只能按照字段的顺序来依次分帧。理解一下这句话，如果单纯拿到一个只有纯数据的二进制流，那么只能按照约定的顺序依次来读取，并且还得知道每个字段的长度，这样才能知道读取几个字节来还原数据。在这里把顺序本身作为一个隐形的契约，双方按照顺序来读写。一旦顺序错了，就有可能发生反序列化的错误。</p>
+</li>
+<li><p>如果我们要字节数大小尽量小，那么我们第一想到的是把分帧信息不放在二进制流中，我们很自然而然想到被序列化对象的Class对象是最自然的选择，而且它还包含了字段的信息，Class.getDeclaredFields()可以返回类的所有实例字段。如果getDeclaredFields()方法返回的字段在任意JVM上都是同样的顺序，那么我们岂不就是可以指依靠序列化反序列化双方拿到被序列化的Class对象，然后利用反射机制拿到字段信息就可以实现最优的序列化后字节数大小吗？<br>但是经过我的调研发现，利用反射技术Class.getDeclared()方法返回的字段数组是没有排序也没有特定顺序的，比如按照声明的顺序。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="annotation">@CallerSensitive</span>  </span><br><span class="line">    <span class="keyword">public</span> Field[] getDeclaredFields() <span class="keyword">throws</span> SecurityException &#123;  </span><br><span class="line">        <span class="comment">// be very careful not to change the stack depth of this  </span></span><br><span class="line">        <span class="comment">// checkMemberAccess call for security reasons  </span></span><br><span class="line">        <span class="comment">// see java.lang.SecurityManager.checkMemberAccess  </span></span><br><span class="line">        checkMemberAccess(Member.DECLARED, Reflection.getCallerClass(), <span class="keyword">true</span>);  </span><br><span class="line">        <span class="keyword">return</span> copyFields(privateGetDeclaredFields(<span class="keyword">false</span>));  </span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>那不能利用反射技术获得字段顺序，能不能利用字节码技术来获得这个类声明时存放的字段顺序呢？比如用ASM来直接读Class文件。但是我查阅了Java虚拟机规范，虚拟机规范只规定了Class文件中的元素，并没有要求实际存储的Filed[]按照声明顺序存储。这也是对的，实际的虚拟机实现可以按照各自的算法来优化。<br><img src="/img/class.png" alt=""><br>事实上目前没有哪个协议做到最优的序列化后字节数，间接证明了只使用Class元数据来分帧是不能满足所有平台的，是不可靠的。</p>
+<h4 id="解决方案">解决方案</h4><blockquote>
+<p>既然顺序这种弱契约关系不可靠，那么需要一种强契约关系，需要把一些分帧信息加入到二进制流，然后通过某种方式来获取这些分帧信息。加入哪些分帧信息和如何共享这些分帧信息有几种做法：</p>
+</blockquote>
+<ol>
+<li>Java原生的序列化协议把字段类型信息用字符串格式写到了二进制流里面，这样反序列化方就可以根据字段信息来反序列化。但是Java原生的序列化协议最大的问题就是生成的字节流太大</li>
+<li>Hessian, Kryo这些协议不需要借助中间文件，直接把分帧信息写入了二进制流，并且没有使用字符串来存放，而是定义了特定的格式来表示这些类型信息。Hessian, Kryo生成的字节流就优化了很多，尤其是Kryo，生成的字节流大小甚至可以优于Protobuf.</li>
+<li>Protobuf和Thrift利用IDL来生成中间文件，这些中间文件包含了如何分帧的信息，比如Thrift给每个字段生成了元数据，包含了顺序信息（加了id信息），和类型信息，实际写的二进制流里面包含了每个字段id, 类型，长度等分帧信息。序列化方和反序列化方共享这些中间文件来进行序列化操作。</li>
+</ol>
+<p>常见的应用是这样的<br><img src="/img/idl.jpg" alt=""></p>
+<h4 id="存在的问题">存在的问题</h4><p>Hessian, Kryo, Protobuf, Thrift在生成的字节数都有了优化，并且可以只发送部分设置了值的字段信息来完成序列化，这样节省的字节数就更多了。但是还有些问题：</p>
+<ol>
+<li>Hessian, Kryo不满足第三个方面，支持被序列化对象的新旧版本兼容，只依靠Class信息没有办法知道新旧Class的区别</li>
+<li>Protobuf和Thrift已经很优化了，但是需要用IDL来生成静态的中间文件。</li>
+<li>版本问题，比如服务方给方法的参数新增加了一个字段，要能做到老的客户端还可以使用这个新服务。这就要求序列化协议读取到不能识别的字段后能够处理异常。比如Thrift可以通过字段的id信息来知道是否支持这个字段，如果不支持读取，就跳过，从而做到新旧版本的兼容。而Kryo这种不依赖中间文件的协议很难做到这点，因为单纯的Class信息在不同的平台下字段顺序是不确定的，并且同一个Java文件在不同平台下编译后的Class文件中，字段信息也是不确定的。<h4 id="常见序列化性能和开销对比">常见序列化性能和开销对比</h4></li>
+<li>解析性能<br><img src="/img/xingneng.png" alt=""> </li>
+<li>空间开销<br><img src="/img/kaixiao.png" alt=""></li>
+</ol>
+<h4 id="总结">总结</h4><p>不依赖中间文件来序列化并同时满足前3点，从上面的分析来看很难做到。Protobuf和Thrift这种使用IDL来生产中间文件的协议，除了从跨平台调用的角度的需要，也包含了序列化的需要。毕竟又要考虑跨语言，又想得到效率，明显是不可能的。只有通过牺牲我们自己的时间去创建IDL文件来达到我们的目的。</p>
+<p>参考文章</p>
+<ul>
+<li><a href="http://blog.csdn.net/iter_zc/article/details/40794845" target="_blank" rel="external">http://blog.csdn.net/iter_zc/article/details/40794845</a></li>
+<li><a href="http://www.infoq.com/cn/articles/serialization-and-deserialization" target="_blank" rel="external">http://www.infoq.com/cn/articles/serialization-and-deserialization</a></li>
+</ul>
+
+      
+    </div>
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/java/" rel="tag">#java</a>
+          
+            <a href="/tags/kryo/" rel="tag">#kryo</a>
+          
+            <a href="/tags/protobuf/" rel="tag">#protobuf</a>
+          
+            <a href="/tags/协议/" rel="tag">#协议</a>
+          
+            <a href="/tags/序列化/" rel="tag">#序列化</a>
+          
+            <a href="/tags/性能/" rel="tag">#性能</a>
+          
+        </div>
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2016/01/30/浅析Google-Guava中concurrent下的Monitor和Future特性/" rel="next" title="浅析Google Guava中concurrent下的Monitor和Future特性">
+                <i class="fa fa-chevron-left"></i> 浅析Google Guava中concurrent下的Monitor和Future特性
+              </a>
+            
+          </div>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </article>
+
+
+
+    <div class="post-spread">
+      
+        <div class="ds-share flat" data-thread-key="2016/01/30/关于序列化协议的思考/"
+     data-title="关于序列化协议的思考"
+     data-content=""
+     data-url="http://yaccc.github.io/2016/01/30/关于序列化协议的思考/">
+  <div class="ds-share-inline">
+    <ul  class="ds-share-icons-16">
+
+      <li data-toggle="ds-share-icons-more"><a class="ds-more" href="javascript:void(0);">分享到：</a></li>
+      <li><a class="ds-weibo" href="javascript:void(0);" data-service="weibo">微博</a></li>
+      <li><a class="ds-qzone" href="javascript:void(0);" data-service="qzone">QQ空间</a></li>
+      <li><a class="ds-qqt" href="javascript:void(0);" data-service="qqt">腾讯微博</a></li>
+      <li><a class="ds-wechat" href="javascript:void(0);" data-service="wechat">微信</a></li>
+
+    </ul>
+    <div class="ds-share-icons-more">
+    </div>
+  </div>
+</div>
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+  <div class="comments" id="comments">
+    
+      <div class="ds-thread" data-thread-key="2016/01/30/关于序列化协议的思考/"
+           data-title="关于序列化协议的思考" data-url="http://yaccc.github.io/2016/01/30/关于序列化协议的思考/">
+      </div>
+    
+  </div>
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap" >
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview sidebar-panel ">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+          <img class="site-author-image" itemprop="image"
+               src="/images/avator.jpg"
+               alt="谢照东" />
+          <p class="site-author-name" itemprop="name">谢照东</p>
+          <p class="site-description motion-element" itemprop="description">我没有梦想，但是我有一个野心！</p>
+        </div>
+        <nav class="site-state motion-element">
+          <div class="site-state-item site-state-posts">
+            <a href="/archives">
+              <span class="site-state-item-count">7</span>
+              <span class="site-state-item-name">日志</span>
+            </a>
+          </div>
+
+          <div class="site-state-item site-state-categories">
+            <a href="/categories">
+              <span class="site-state-item-count">19</span>
+              <span class="site-state-item-name">分类</span>
+              </a>
+          </div>
+
+          <div class="site-state-item site-state-tags">
+            <a href="/tags">
+              <span class="site-state-item-count">16</span>
+              <span class="site-state-item-name">标签</span>
+              </a>
+          </div>
+
+        </nav>
+
+        
+          <div class="feed-link motion-element">
+            <a href="/atom.xml" rel="alternate">
+              <i class="fa fa-rss"></i>
+              RSS
+            </a>
+          </div>
+        
+
+        <div class="links-of-author motion-element">
+          
+            
+              <span class="links-of-author-item">
+                <a href="https://github.com/Yaccc" target="_blank">
+                  
+                    <i class="fa fa-github"></i> GitHub
+                  
+                </a>
+              </span>
+            
+              <span class="links-of-author-item">
+                <a href="http://weibo.com/u/2571066903" target="_blank">
+                  
+                    <i class="fa fa-globe"></i> 微博
+                  
+                </a>
+              </span>
+            
+              <span class="links-of-author-item">
+                <a href="http://www.zhihu.com/people/JAVAC" target="_blank">
+                  
+                    <i class="fa fa-globe"></i> 知乎
+                  
+                </a>
+              </span>
+            
+          
+        </div>
+
+        
+        
+
+        <div class="links-of-author motion-element">
+          
+            <p class="site-author-name">links</p>
+            
+              <span class="links-of-author-item">
+                <a href="http://harry.wiki/" target="_blank">Mr.Harry</a>
+              </span>
+            
+              <span class="links-of-author-item">
+                <a href="https://ilulu.xyz/" target="_blank">ilulu</a>
+              </span>
+            
+              <span class="links-of-author-item">
+                <a href="http://wjd1218.github.io/" target="_blank">0-?</a>
+              </span>
+            
+              <span class="links-of-author-item">
+                <a href="http://ios.dog" target="_blank">ios.dog</a>
+              </span>
+            
+              <span class="links-of-author-item">
+                <a href="http://jucsinyu.com" target="_blank">jucsinyu</a>
+              </span>
+            
+          
+        </div>
+
+      </section>
+
+      
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc-indicator-top post-toc-indicator">
+            <i class="fa fa-angle-double-up"></i>
+          </div>
+          <div class="post-toc">
+            
+              
+            
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#思考"><span class="nav-number">1.</span> <span class="nav-text">思考</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#性能"><span class="nav-number">2.</span> <span class="nav-text">性能</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#需要考虑的问题"><span class="nav-number">3.</span> <span class="nav-text">需要考虑的问题</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#解决方案"><span class="nav-number">4.</span> <span class="nav-text">解决方案</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#存在的问题"><span class="nav-number">5.</span> <span class="nav-text">存在的问题</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#常见序列化性能和开销对比"><span class="nav-number">6.</span> <span class="nav-text">常见序列化性能和开销对比</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#总结"><span class="nav-number">7.</span> <span class="nav-text">总结</span></a></li></ol></div>
+            
+          </div>
+          <div class="post-toc-indicator-bottom post-toc-indicator">
+            <i class="fa fa-angle-double-down"></i>
+          </div>
+        </section>
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright" >
+  
+  &copy;  2015 - 
+  <span itemprop="copyrightYear">2016</span>
+  <span class="with-love">
+    <i class="icon-next-heart fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">谢照东</span>
+</div>
+
+<div class="powered-by">
+  由 <a class="theme-link" href="http://hexo.io">Hexo</a> 强力驱动
+</div>
+
+<div class="theme-info">
+  主题 -
+  <a class="theme-link" href="https://github.com/iissnan/hexo-theme-next">
+    NexT.Pisces
+  </a>
+</div>
+
+
+
+      </div>
+    </footer>
+
+    <div class="back-to-top"></div>
+  </div>
+
+  
+
+
+  
+
+
+
+  <script type="text/javascript" src="/vendors/jquery/index.js?v=2.1.3"></script>
+
+  <script type="text/javascript" src="/vendors/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+
+  <script type="text/javascript" src="/vendors/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+
+  <script type="text/javascript" src="/vendors/velocity/velocity.min.js"></script>
+
+  <script type="text/javascript" src="/vendors/velocity/velocity.ui.min.js"></script>
+
+  <script type="text/javascript" src="/vendors/fancybox/source/jquery.fancybox.pack.js"></script>
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.0.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.0.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.0.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.0.0"></script>
+
+
+
+  
+  
+<script type="text/javascript" src="/js/src/scrollspy.js?v=5.0.0"></script>
+
+<script type="text/javascript" id="sidebar.toc.highlight">
+  $(document).ready(function () {
+    var tocSelector = '.post-toc';
+    var $tocSelector = $(tocSelector);
+    var activeCurrentSelector = '.active-current';
+
+    $tocSelector
+      .on('activate.bs.scrollspy', function () {
+        var $currentActiveElement = $(tocSelector + ' .active').last();
+
+        removeCurrentActiveClass();
+        $currentActiveElement.addClass('active-current');
+
+        $tocSelector[0].scrollTop = $currentActiveElement.position().top;
+      })
+      .on('clear.bs.scrollspy', function () {
+        removeCurrentActiveClass();
+      });
+
+    function removeCurrentActiveClass () {
+      $(tocSelector + ' ' + activeCurrentSelector)
+        .removeClass(activeCurrentSelector.substring(1));
+    }
+
+    function processTOC () {
+      getTOCMaxHeight();
+      toggleTOCOverflowIndicators();
+    }
+
+    function getTOCMaxHeight () {
+      var height = $('.sidebar').height() -
+                   $tocSelector.position().top -
+                   $('.post-toc-indicator-bottom').height();
+
+      $tocSelector.css('height', height);
+
+      return height;
+    }
+
+    function toggleTOCOverflowIndicators () {
+      tocOverflowIndicator(
+        '.post-toc-indicator-top',
+        $tocSelector.scrollTop() > 0 ? 'show' : 'hide'
+      );
+
+      tocOverflowIndicator(
+        '.post-toc-indicator-bottom',
+        $tocSelector.scrollTop() >= $tocSelector.find('ol').height() - $tocSelector.height() ? 'hide' : 'show'
+      )
+    }
+
+    $(document).on('sidebar.motion.complete', function () {
+      processTOC();
+    });
+
+    $('body').scrollspy({ target: tocSelector });
+    $(window).on('resize', function () {
+      if ( $('.sidebar').hasClass('sidebar-active') ) {
+        processTOC();
+      }
+    });
+
+    onScroll($tocSelector);
+
+    function onScroll (element) {
+      element.on('mousewheel DOMMouseScroll', function (event) {
+          var oe = event.originalEvent;
+          var delta = oe.wheelDelta || -oe.detail;
+
+          this.scrollTop += ( delta < 0 ? 1 : -1 ) * 30;
+          event.preventDefault();
+
+          toggleTOCOverflowIndicators();
+      });
+    }
+
+    function tocOverflowIndicator (indicator, action) {
+      var $indicator = $(indicator);
+      var opacity = action === 'show' ? 1 : 0;
+      $indicator.velocity ?
+        $indicator.velocity('stop').velocity({
+          opacity: opacity
+        }, { duration: 100 }) :
+        $indicator.stop().animate({
+          opacity: opacity
+        }, 100);
+    }
+
+  });
+</script>
+
+<script type="text/javascript" id="sidebar.nav">
+  $(document).ready(function () {
+    var html = $('html');
+    var TAB_ANIMATE_DURATION = 200;
+    var hasVelocity = $.isFunction(html.velocity);
+
+    $('.sidebar-nav li').on('click', function () {
+      var item = $(this);
+      var activeTabClassName = 'sidebar-nav-active';
+      var activePanelClassName = 'sidebar-panel-active';
+      if (item.hasClass(activeTabClassName)) {
+        return;
+      }
+
+      var currentTarget = $('.' + activePanelClassName);
+      var target = $('.' + item.data('target'));
+
+      hasVelocity ?
+        currentTarget.velocity('transition.slideUpOut', TAB_ANIMATE_DURATION, function () {
+          target
+            .velocity('stop')
+            .velocity('transition.slideDownIn', TAB_ANIMATE_DURATION)
+            .addClass(activePanelClassName);
+        }) :
+        currentTarget.animate({ opacity: 0 }, TAB_ANIMATE_DURATION, function () {
+          currentTarget.hide();
+          target
+            .stop()
+            .css({'opacity': 0, 'display': 'block'})
+            .animate({ opacity: 1 }, TAB_ANIMATE_DURATION, function () {
+              currentTarget.removeClass(activePanelClassName);
+              target.addClass(activePanelClassName);
+            });
+        });
+
+      item.siblings().removeClass(activeTabClassName);
+      item.addClass(activeTabClassName);
+    });
+
+    $('.post-toc a').on('click', function (e) {
+      e.preventDefault();
+      var targetSelector = NexT.utils.escapeSelector(this.getAttribute('href'));
+      var offset = $(targetSelector).offset().top;
+      hasVelocity ?
+        html.velocity('stop').velocity('scroll', {
+          offset: offset  + 'px',
+          mobileHA: false
+        }) :
+        $('html, body').stop().animate({
+          scrollTop: offset
+        }, 500);
+    });
+
+    // Expand sidebar on post detail page by default, when post has a toc.
+    NexT.motion.middleWares.sidebar = function () {
+      var $tocContent = $('.post-toc-content');
+
+      if (CONFIG.sidebar === 'post') {
+        if ($tocContent.length > 0 && $tocContent.html().trim().length > 0) {
+          NexT.utils.displaySidebar();
+        }
+      }
+    };
+  });
+</script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.0.0"></script>
+
+
+
+  
+
+  
+    
+  
+
+  <script type="text/javascript">
+    var duoshuoQuery = {short_name:"xiezhaodong"};
+    (function() {
+      var ds = document.createElement('script');
+      ds.type = 'text/javascript';ds.async = true;
+      ds.id = 'duoshuo-script';
+      ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+      ds.charset = 'UTF-8';
+      (document.getElementsByTagName('head')[0]
+      || document.getElementsByTagName('body')[0]).appendChild(ds);
+    })();
+  </script>
+
+  
+    
+  
+
+
+
+
+
+  
+  
+
+  
+  
+
+
+</body>
+</html>
