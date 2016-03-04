@@ -67,7 +67,7 @@ ThreadPoolExecutor介绍ThreadPoolExecutor的完整构造方法的签名如下12
 <meta property="og:site_name" content="「浮生若梦」">
 <meta property="og:description" content="目的主要介绍ThreadPoolExecutor的用法，和较浅显的认识，场景的使用方案等等，比较忙碌，如果有错误还请大家指出
 ThreadPoolExecutor介绍ThreadPoolExecutor的完整构造方法的签名如下12ThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUni">
-<meta property="og:updated_time" content="2016-02-01T09:08:53.000Z">
+<meta property="og:updated_time" content="2016-02-03T07:26:59.000Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ThreadPoolExecutor线程池解析与BlockingQueue的三种实现">
 <meta name="twitter:description" content="目的主要介绍ThreadPoolExecutor的用法，和较浅显的认识，场景的使用方案等等，比较忙碌，如果有错误还请大家指出
@@ -353,7 +353,7 @@ ThreadPoolExecutor介绍ThreadPoolExecutor的完整构造方法的签名如下12
 </li>
 <li><p>maximumPoolSize（线程池最大大小）：线程池允许创建的最大线程数。如果队列满了，并且已创建的线程数小于最大线程数，则线程池会再创建新的线程执行任务。值得注意的是如果使用了无界的任务队列这个参数就没什么效果。</p>
 </li>
-<li>ThreadFactory：用于设置创建线程的工厂，可以通过线程工厂给每个创建出来的线程设置更有意义的名字。</li>
+<li>ThreadFactory：用于设置创建线程的工厂，可以通过线程工厂给每个创建出来的线程做些更有意义的事情，比如设置daemon和优先级等等</li>
 <li>RejectedExecutionHandler（饱和策略）：当队列和线程池都满了，说明线程池处于饱和状态，那么必须采取一种策略处理提交的新任务。这个策略默认情况下是AbortPolicy，表示无法处理新任务时抛出异常。以下是JDK1.5提供的四种策略。<ol>
 <li>AbortPolicy：直接抛出异常。</li>
 <li>CallerRunsPolicy：只用调用者所在线程来运行任务。</li>
@@ -449,6 +449,10 @@ ThreadPoolExecutor介绍ThreadPoolExecutor的完整构造方法的签名如下12
 
           <div class="post-nav-prev post-nav-item">
             
+              <a href="/2016/03/05/ThreadLocal源码分析解密/" rel="prev" title="ThreadLocal源码分析解密">
+                ThreadLocal源码分析解密 <i class="fa fa-chevron-right"></i>
+              </a>
+            
           </div>
         </div>
       
@@ -538,21 +542,21 @@ ThreadPoolExecutor介绍ThreadPoolExecutor的完整构造方法的签名如下12
         <nav class="site-state motion-element">
           <div class="site-state-item site-state-posts">
             <a href="/archives">
-              <span class="site-state-item-count">8</span>
+              <span class="site-state-item-count">9</span>
               <span class="site-state-item-name">日志</span>
             </a>
           </div>
 
           <div class="site-state-item site-state-categories">
             <a href="/categories">
-              <span class="site-state-item-count">22</span>
+              <span class="site-state-item-count">26</span>
               <span class="site-state-item-name">分类</span>
               </a>
           </div>
 
           <div class="site-state-item site-state-tags">
             <a href="/tags">
-              <span class="site-state-item-count">18</span>
+              <span class="site-state-item-count">21</span>
               <span class="site-state-item-name">标签</span>
               </a>
           </div>
