@@ -1,0 +1,875 @@
+<!doctype html>
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+  <link href="/vendors/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css"/>
+
+
+
+
+  <link href="//fonts.googleapis.com/css?family=Lato:300,400,700,400italic&subset=latin,latin-ext" rel="stylesheet" type="text/css">
+
+
+
+<link href="/vendors/font-awesome/css/font-awesome.min.css?v=4.4.0" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.0.0" rel="stylesheet" type="text/css" />
+
+
+  <meta name="keywords" content="MVC,Spring,java,反射，方法名," />
+
+
+
+
+
+  <link rel="alternate" href="/atom.xml" title="「浮生若梦」" type="application/atom+xml" />
+
+
+
+
+  <link rel="shortcut icon" type="image/x-icon" href="/images/avator.jpg?v=5.0.0" />
+
+
+
+
+
+
+<meta name="description" content="背景为什么要在interceptor层获得方法名称呢？在分布式链路系统中我们需要在MVC框架层埋点，统计方法调用的耗时、trace信息等，目前公司内部没有统一的MVC框架，但是大多数都是使用的SpringMVC.所以我们在Interceptor这一层埋点就ok。在这里可以统计到方法调用完的耗时信息，同时也可以得到用户自定义的埋点信息。在这个过程中踩了一些坑，也尝试了各种方法
+Interceptor">
+<meta property="og:type" content="article">
+<meta property="og:title" content="在SpingMVC的Interceptor中如何得到被调用方法名">
+<meta property="og:url" content="http://yaccc.gitcafe.io/2016/08/31/在SpingMVC的Interceptor中如何得到被调用方法名/index.html">
+<meta property="og:site_name" content="「浮生若梦」">
+<meta property="og:description" content="背景为什么要在interceptor层获得方法名称呢？在分布式链路系统中我们需要在MVC框架层埋点，统计方法调用的耗时、trace信息等，目前公司内部没有统一的MVC框架，但是大多数都是使用的SpringMVC.所以我们在Interceptor这一层埋点就ok。在这里可以统计到方法调用完的耗时信息，同时也可以得到用户自定义的埋点信息。在这个过程中踩了一些坑，也尝试了各种方法
+Interceptor">
+<meta property="og:updated_time" content="2016-08-31T16:39:18.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="在SpingMVC的Interceptor中如何得到被调用方法名">
+<meta name="twitter:description" content="背景为什么要在interceptor层获得方法名称呢？在分布式链路系统中我们需要在MVC框架层埋点，统计方法调用的耗时、trace信息等，目前公司内部没有统一的MVC框架，但是大多数都是使用的SpringMVC.所以我们在Interceptor这一层埋点就ok。在这里可以统计到方法调用完的耗时信息，同时也可以得到用户自定义的埋点信息。在这个过程中踩了一些坑，也尝试了各种方法
+Interceptor">
+
+
+
+<script type="text/javascript" id="hexo.configuration">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    scheme: 'Pisces',
+    sidebar: '[object Object]',
+    fancybox: true,
+    motion: true,
+    duoshuo: {
+      userId: 0,
+      author: '博主'
+    }
+  };
+</script>
+
+  <title> 在SpingMVC的Interceptor中如何得到被调用方法名 | 「浮生若梦」 </title>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+
+
+
+
+
+
+  
+  
+    
+  
+
+  <div class="container one-collumn sidebar-position-left page-post-detail ">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-meta ">
+  
+
+  <div class="custom-logo-site-title">
+    <a href="/"  class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <span class="site-title">「浮生若梦」</span>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+  <p class="site-subtitle"></p>
+</div>
+
+<div class="site-nav-toggle">
+  <button>
+    <span class="btn-bar"></span>
+    <span class="btn-bar"></span>
+    <span class="btn-bar"></span>
+  </button>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu ">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-home fa-fw"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories" rel="section">
+            
+              <i class="menu-item-icon fa fa-th fa-fw"></i> <br />
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about" rel="section">
+            
+              <i class="menu-item-icon fa fa-user fa-fw"></i> <br />
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives" rel="section">
+            
+              <i class="menu-item-icon fa fa-archive fa-fw"></i> <br />
+            
+            归档
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags" rel="section">
+            
+              <i class="menu-item-icon fa fa-tags fa-fw"></i> <br />
+            
+            标签
+          </a>
+        </li>
+      
+
+      
+      
+      
+    </ul>
+  
+
+  
+</nav>
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal " itemscope itemtype="http://schema.org/Article">
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+            
+            
+              
+                在SpingMVC的Interceptor中如何得到被调用方法名
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            <span class="post-meta-item-icon">
+              <i class="fa fa-calendar-o"></i>
+            </span>
+            <span class="post-meta-item-text">发表于</span>
+            <time itemprop="dateCreated" datetime="2016-08-31T18:34:44+08:00" content="2016-08-31">
+              2016-08-31
+            </time>
+          </span>
+
+          
+            <span class="post-category" >
+              &nbsp; | &nbsp;
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+              
+                <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
+                  <a href="/categories/java/" itemprop="url" rel="index">
+                    <span itemprop="name">java</span>
+                  </a>
+                </span>
+
+                
+                
+                  ， 
+                
+
+              
+                <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
+                  <a href="/categories/java/Spring/" itemprop="url" rel="index">
+                    <span itemprop="name">Spring</span>
+                  </a>
+                </span>
+
+                
+                
+                  ， 
+                
+
+              
+                <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
+                  <a href="/categories/java/Spring/MVC/" itemprop="url" rel="index">
+                    <span itemprop="name">MVC</span>
+                  </a>
+                </span>
+
+                
+                
+                  ， 
+                
+
+              
+                <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
+                  <a href="/categories/java/Spring/MVC/反射，方法名/" itemprop="url" rel="index">
+                    <span itemprop="name">反射，方法名</span>
+                  </a>
+                </span>
+
+                
+                
+
+              
+            </span>
+          
+
+          
+            
+              <span class="post-comments-count">
+                &nbsp; | &nbsp;
+                <a href="/2016/08/31/在SpingMVC的Interceptor中如何得到被调用方法名/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count ds-thread-count" data-thread-key="2016/08/31/在SpingMVC的Interceptor中如何得到被调用方法名/" itemprop="commentsCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+
+          
+          
+        </div>
+      </header>
+    
+
+
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="背景">背景</h2><p>为什么要在interceptor层获得方法名称呢？在分布式链路系统中我们需要在MVC框架层埋点，统计方法调用的耗时、trace信息等，目前公司内部没有统一的MVC框架，但是大多数都是使用的SpringMVC.所以我们在Interceptor这一层埋点就ok。在这里可以统计到方法调用完的耗时信息，同时也可以得到用户自定义的埋点信息。在这个过程中踩了一些坑，也尝试了各种方法</p>
+<h2 id="Interceptor介绍">Interceptor介绍</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">  <span class="comment">/*</span><br><span class="line">  *主要是这两个方法,我们要拿到此时调用的方法名称，需要从handler中入手</span><br><span class="line">  */</span></span><br><span class="line">  <span class="annotation">@Override</span></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">preHandle</span><span class="params">(HttpServletRequest request, HttpServletResponse response, Object handler)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">  <span class="comment">//1.得到方法名称。2.得到开始时间。3.得到远端传过来的TraceID ... etc</span></span><br><span class="line">         &#125;</span><br><span class="line">  <span class="annotation">@Override</span></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">afterCompletion</span><span class="params">(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line"><span class="comment">//1.得到结束时间 2.回传一些必要信息3.上报信息给agent</span></span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+<p>该handler是什么呢?通过<code>DispatcherServlet</code>类源码我们可以看到该handler是<code>HandlerExecutionChain</code>中的Object对象,顾名思义，该类代表了这次request请求的执行链,里面包括了这次执行中的所有interceptor。那么这个handler对象是Method对象吗？并不完全是这样的…</p>
+<h2 id="高版本SpringMVC（3-1+）">高版本SpringMVC（3.1+）</h2><p>那么HandlerExecutionChain是怎么初始化的呢？它是靠HandlerMapping来初始化的，HandlerMapping的实例可以自己配置，或者使用默认配置,SpringMVC会默认的加载DispatcherServlet.properties配置文件中的这几种配置</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">org.springframework.web.servlet.LocaleResolver=org.springframework.web.servlet.i18n.AcceptHeaderLocaleResolver</span><br><span class="line"></span><br><span class="line">org.springframework.web.servlet.ThemeResolver=org.springframework.web.servlet.theme.FixedThemeResolver</span><br><span class="line"></span><br><span class="line">org.springframework.web.servlet.HandlerMapping=org.springframework.web.servlet.handler.BeanNameUrlHandlerMapping,\</span><br><span class="line">	org.springframework.web.servlet.mvc.annotation.DefaultAnnotationHandlerMapping</span><br><span class="line"></span><br><span class="line">org.springframework.web.servlet.HandlerAdapter=org.springframework.web.servlet.mvc.HttpRequestHandlerAdapter,\</span><br><span class="line">	org.springframework.web.servlet.mvc.SimpleControllerHandlerAdapter,\</span><br><span class="line">	org.springframework.web.servlet.mvc.annotation.AnnotationMethodHandlerAdapter</span><br><span class="line"></span><br><span class="line">org.springframework.web.servlet.HandlerExceptionResolver=org.springframework.web.servlet.mvc.annotation.AnnotationMethodHandlerExceptionResolver,\</span><br><span class="line">	org.springframework.web.servlet.mvc.annotation.ResponseStatusExceptionResolver,\</span><br><span class="line">	org.springframework.web.servlet.mvc.support.DefaultHandlerExceptionResolver</span><br><span class="line"></span><br><span class="line">org.springframework.web.servlet.RequestToViewNameTranslator=org.springframework.web.servlet.view.DefaultRequestToViewNameTranslator</span><br><span class="line"></span><br><span class="line">org.springframework.web.servlet.ViewResolver=org.springframework.web.servlet.view.InternalResourceViewResolver</span><br><span class="line"></span><br><span class="line">org.springframework.web.servlet.FlashMapManager=org.springframework.web.servlet.support.SessionFlashMapManager</span><br></pre></td></tr></table></figure>
+<p>HandlerMapping的工作就是将request和handler映射起来，但是我们会有多种方式，比如通过controller的名称、或者在xml中配置、又或者使用annotation的方式。所以mapping有很多种，当然也可以配置多个HandlerMapping，SpringMVC通过适配器模式为你找到匹配的HandlerMapping。那么这个Handler究竟是什么呢?</p>
+<p>在<code>AbstractUrlHandlerMapping</code>抽象类的registerHandler方法可以找到答案，handler默认是Controller实例，通过beanName被抽象类获取到实例(controller应该都会加载到容器这是毋庸置疑的)。那么结局就有点尴尬了，拿到Controller实例没什么大的作用。根本拿不到对应的方法。</p>
+<p>但是SpringMVC3.1以上版本<code>annotation-driven</code>配置把<code>DefaultAnnotationHandlerMapping</code>和<code>AnnotationMethodHandlerAdapter</code>默认修改成了<code>RequestMappingHandlerMapping</code>和对应的adapter。后者的一系列类把request和Method对象Mapping在了一起。通过以下方法使用</p>
+<ul>
+<li>使用annotation-driven配置xml,可以自动注入RequestMappingHandlerMapping和adapter</li>
+<li>手动配置RequestMappingHandlerMapping的bean</li>
+</ul>
+<p>使用了RequestMappingHandlerMapping之后，handler的实例就变成了<code>HandlerMethod</code>这个对象，我们可以直接获得方法名称，皆大欢喜！</p>
+<h2 id="低版本SpringMVC（3-1以下）">低版本SpringMVC（3.1以下）</h2><p>如果是低版本的SpringMVC 那就没办法了，只能拿到Controller实例的对象，这里心生一计，既然能得到Controller对象，是否可以通过request中的url，在通过反射拿到所有方法的注解值然后mapping到方法呢？好想是可以的，但是这里有一个问题，就是url匹配的问题，SpringMVC包含了多种url匹配，比如RESTFUL，还有各种匹配格式，非常繁琐。要么自己重写SpringMVC的匹配，要么就使用内部的匹配方法。这一点也提醒了我，SpringMVC最后肯定会通过一种方式找到对应的方法然后invoke的。这也就是adapter的责任。看看DispatcherServlet（前两个）源码细节</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 1.Determine handler adapter for the current request.</span></span><br><span class="line"><span class="comment">//通过对应的handler得到合适的adatper对象,这里实际上就已经初始化了methodResolver对象，放到了一个map中</span></span><br><span class="line">HandlerAdapter ha = getHandlerAdapter(mappedHandler.getHandler());</span><br><span class="line"><span class="comment">// 2.Actually invoke the handler. 执行对应handler中的handler方法</span></span><br><span class="line">mv = ha.handle(processedRequest, response, mappedHandler.getHandler());</span><br><span class="line"><span class="comment">//3.annodationMethodHandlerAdapter的handle方法中，发现了得到method对象的足迹</span></span><br><span class="line"><span class="function"><span class="keyword">protected</span> ModelAndView <span class="title">invokeHandlerMethod</span><span class="params">(HttpServletRequest request, HttpServletResponse response, Object handler)</span></span><br><span class="line">			<span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">	<span class="comment">//通过request对象得到Method对象，然后invoke得到result，渲染modelAndView</span></span><br><span class="line">		ServletHandlerMethodResolver methodResolver = getMethodResolver(handler);</span><br><span class="line">		</span><br><span class="line">		Method handlerMethod = methodResolver.resolveHandlerMethod(request);</span><br><span class="line">		ServletHandlerMethodInvoker methodInvoker = <span class="keyword">new</span> ServletHandlerMethodInvoker(methodResolver);</span><br><span class="line">		ServletWebRequest webRequest = <span class="keyword">new</span> ServletWebRequest(request, response);</span><br><span class="line">		ExtendedModelMap implicitModel = <span class="keyword">new</span> BindingAwareModelMap();</span><br><span class="line"></span><br><span class="line">		Object result = methodInvoker.invokeHandlerMethod(handlerMethod, handler, webRequest, implicitModel);</span><br><span class="line">		ModelAndView mav =</span><br><span class="line">				methodInvoker.getModelAndView(handlerMethod, handler.getClass(), result, implicitModel, webRequest);</span><br><span class="line">		methodInvoker.updateModelAttributes(handler, (mav != <span class="keyword">null</span> ? mav.getModel() : <span class="keyword">null</span>), implicitModel, webRequest);</span><br><span class="line">		<span class="keyword">return</span> mav;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+<p>流程大概是这样的：</p>
+<ul>
+<li>通过handler对象找到对应的adapter对象，同时初始化自己的methodResolver，同时放入到adapter的一个map<class,servlethandlermethodresolver>当中初始化过程详细见<code>ServletHandlerMethodResolver</code>和它的父类<code>HandlerMethodResolver</code></class,servlethandlermethodresolver></li>
+<li>adapter调用handle方法的时候，传入request，调用resolveHandlerMethod(request)方法，通过SpringMVC自己的匹配规则，最终得到Method对象。</li>
+</ul>
+<p>好了，终于找到了url匹配的方法，这个方法要用两个东西，一个是handler，一个是request。我们要如何使用它呢？由于adapter在拦截器之前执行，所以方法映射都已经初始化完毕了。所以我们只能使用初始化完毕之后的map对象，这里就只有使用反射：大概的代码是这样的。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"> ApplicationContext context = applicationContext;</span><br><span class="line"> AnnotationMethodHandlerAdapter myadatper = (AnnotationMethodHandlerAdapter) context.getBean(<span class="string">"myadatper"</span>, AnnotationMethodHandlerAdapter.class);</span><br><span class="line">Class&lt;? extends AnnotationMethodHandlerAdapter&gt; clazz = myadatper.getClass();</span><br><span class="line"><span class="comment">//得到Map字段,然后得到自己的实例</span></span><br><span class="line">Field map = clazz.getDeclaredField(<span class="string">"methodResolverCache"</span>);</span><br><span class="line">map.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">Map methodResolver = (Map) map.get(myadatper);</span><br><span class="line"><span class="comment">//通过handler对象得到map的value,也就是该controller所对应的methodResolver</span></span><br><span class="line">Object resovler = methodResolver.get(handler.getClass());</span><br><span class="line">Class&lt;?&gt; resovler_clazz = resovler.getClass();</span><br><span class="line"><span class="comment">//得到methodResolver中的解析request对象的转换方法,得到method对象</span></span><br><span class="line">Method resolveHandlerMethod = resovler_clazz.getDeclaredMethod(<span class="string">"resolveHandlerMethod"</span>, HttpServletRequest.class);</span><br><span class="line">resolveHandlerMethod.setAccessible(<span class="keyword">true</span>);</span><br><span class="line"><span class="comment">//invoke此方法,得到被调用的method对象</span></span><br><span class="line">Method invoke = (Method) resolveHandlerMethod.invoke(resovler, request);</span><br></pre></td></tr></table></figure>
+<p>这样就能完美的得到被调用的方法名称了，回顾一下整个流程，看起来很简单，其实是一个源码探究的过程，SpringMVC整个过程还是非常复杂的，但是扩展性有些地方很好，有些地方却差强人意。这种方式不好的地方就死对Spring使用了反射，这种侵入性还是有一点，不过我验证之后发现，从2.5开始每个版本的AnnotationMethodHandlerAdapter类都有此方法，所以还算合格。还有一个缺点就是目前只正对annotaion方式做了除了，比如基本的SimpleUrlHandlerMapping等暂时还没有做处理。那么在整个途中还延伸了一种AOP的方法</p>
+<h2 id="利用AspectJ_AOP代理">利用AspectJ AOP代理</h2><p>想到拦截器，自然也想到了代理机制，我们使用AOP环绕或者before、after的方式给方法埋点是否更好呢?其实这种方式对Controller层都会织入我们的ASpectJ代码。使用最简单的方式就行给加上Trace注解的方法都织如aop代理：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="annotation">@Aspect</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">AspectModule</span> </span>&#123;</span><br><span class="line">    <span class="annotation">@Pointcut</span>(<span class="string">"@annotation(com.aspectj.demo.aspect.trace) "</span>)</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">zhiru</span><span class="params">()</span></span>&#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">     <span class="annotation">@Before</span>(<span class="string">"zhiru()"</span>)</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">doBeforeTask</span><span class="params">(JoinPoint point)</span></span>&#123;</span><br><span class="line">        <span class="comment">//这里可以通过point得到method方法</span></span><br><span class="line">        <span class="comment">//同时可以通过ThreadLocal得到request对象，这样也能同时获得远程的信息了</span></span><br><span class="line">        HttpServletRequest request = ((ServletRequestAttributes)RequestContextHolder.getRequestAttributes()).getRequest();   </span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="annotation">@after</span> 同理</span><br></pre></td></tr></table></figure>
+<p>编译之后，代码大概会是这样：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="annotation">@RequestMapping</span>(&#123;<span class="string">"/hello"</span>&#125;)</span><br><span class="line"><span class="annotation">@Trace</span></span><br><span class="line"> JoinPoint var2 = Factory.makeJP(ajc$tjp_0, <span class="keyword">this</span>, <span class="keyword">this</span>, name);</span><br><span class="line"></span><br><span class="line">       ModelAndView var5;</span><br><span class="line">       <span class="keyword">try</span> &#123;</span><br><span class="line">           Aspectj.aspectOf().doBeforeTask2(var2);</span><br><span class="line">           System.out.println(<span class="string">"hell"</span>);</span><br><span class="line">           var5 = <span class="keyword">new</span> ModelAndView(<span class="string">"hello"</span>, <span class="string">"name"</span>, name);</span><br><span class="line">       &#125; <span class="keyword">catch</span> (Throwable var6) &#123;</span><br><span class="line">           Aspectj.aspectOf().doAfterTask(var2);</span><br><span class="line">           <span class="keyword">throw</span> var6;</span><br><span class="line">       &#125;</span><br><span class="line"></span><br><span class="line">       Aspectj.aspectOf().doAfterTask(var2);</span><br><span class="line">       <span class="keyword">return</span> var5;</span><br></pre></td></tr></table></figure>
+<h2 id="总结">总结</h2><ul>
+<li>文章并没有详细的深入到SpringMVC的源码中去，建议读者自行去调试。只是给了大家一个解决问题的思路</li>
+<li>有不妥之处，望斧正！不胜感激</li>
+</ul>
+
+      
+    </div>
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/MVC/" rel="tag">#MVC</a>
+          
+            <a href="/tags/Spring/" rel="tag">#Spring</a>
+          
+            <a href="/tags/java/" rel="tag">#java</a>
+          
+            <a href="/tags/反射，方法名/" rel="tag">#反射，方法名</a>
+          
+        </div>
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2016/03/05/ThreadLocal源码分析解密/" rel="next" title="ThreadLocal源码分析解密">
+                <i class="fa fa-chevron-left"></i> ThreadLocal源码分析解密
+              </a>
+            
+          </div>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </article>
+
+
+
+    <div class="post-spread">
+      
+        <div class="ds-share flat" data-thread-key="2016/08/31/在SpingMVC的Interceptor中如何得到被调用方法名/"
+     data-title="在SpingMVC的Interceptor中如何得到被调用方法名"
+     data-content=""
+     data-url="http://yaccc.gitcafe.io/2016/08/31/在SpingMVC的Interceptor中如何得到被调用方法名/">
+  <div class="ds-share-inline">
+    <ul  class="ds-share-icons-16">
+
+      <li data-toggle="ds-share-icons-more"><a class="ds-more" href="javascript:void(0);">分享到：</a></li>
+      <li><a class="ds-weibo" href="javascript:void(0);" data-service="weibo">微博</a></li>
+      <li><a class="ds-qzone" href="javascript:void(0);" data-service="qzone">QQ空间</a></li>
+      <li><a class="ds-qqt" href="javascript:void(0);" data-service="qqt">腾讯微博</a></li>
+      <li><a class="ds-wechat" href="javascript:void(0);" data-service="wechat">微信</a></li>
+
+    </ul>
+    <div class="ds-share-icons-more">
+    </div>
+  </div>
+</div>
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+  <div class="comments" id="comments">
+    
+      <div class="ds-thread" data-thread-key="2016/08/31/在SpingMVC的Interceptor中如何得到被调用方法名/"
+           data-title="在SpingMVC的Interceptor中如何得到被调用方法名" data-url="http://yaccc.gitcafe.io/2016/08/31/在SpingMVC的Interceptor中如何得到被调用方法名/">
+      </div>
+    
+  </div>
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap" >
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview sidebar-panel ">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+          <img class="site-author-image" itemprop="image"
+               src="/images/avator.jpg"
+               alt="谢照东" />
+          <p class="site-author-name" itemprop="name">谢照东</p>
+          <p class="site-description motion-element" itemprop="description">我没有梦想，但是我有一个野心！</p>
+        </div>
+        <nav class="site-state motion-element">
+          <div class="site-state-item site-state-posts">
+            <a href="/archives">
+              <span class="site-state-item-count">10</span>
+              <span class="site-state-item-name">日志</span>
+            </a>
+          </div>
+
+          <div class="site-state-item site-state-categories">
+            <a href="/categories">
+              <span class="site-state-item-count">29</span>
+              <span class="site-state-item-name">分类</span>
+              </a>
+          </div>
+
+          <div class="site-state-item site-state-tags">
+            <a href="/tags">
+              <span class="site-state-item-count">24</span>
+              <span class="site-state-item-name">标签</span>
+              </a>
+          </div>
+
+        </nav>
+
+        
+          <div class="feed-link motion-element">
+            <a href="/atom.xml" rel="alternate">
+              <i class="fa fa-rss"></i>
+              RSS
+            </a>
+          </div>
+        
+
+        <div class="links-of-author motion-element">
+          
+            
+              <span class="links-of-author-item">
+                <a href="https://github.com/Yaccc" target="_blank">
+                  
+                    <i class="fa fa-github"></i> GitHub
+                  
+                </a>
+              </span>
+            
+              <span class="links-of-author-item">
+                <a href="http://weibo.com/u/2571066903" target="_blank">
+                  
+                    <i class="fa fa-globe"></i> 微博
+                  
+                </a>
+              </span>
+            
+              <span class="links-of-author-item">
+                <a href="http://www.zhihu.com/people/JAVAC" target="_blank">
+                  
+                    <i class="fa fa-globe"></i> 知乎
+                  
+                </a>
+              </span>
+            
+          
+        </div>
+
+        
+        
+
+        <div class="links-of-author motion-element">
+          
+            <p class="site-author-name">links</p>
+            
+              <span class="links-of-author-item">
+                <a href="http://harry.wiki/" target="_blank">Mr.Harry</a>
+              </span>
+            
+              <span class="links-of-author-item">
+                <a href="https://ilulu.xyz/" target="_blank">ilulu</a>
+              </span>
+            
+              <span class="links-of-author-item">
+                <a href="http://wjd1218.github.io/" target="_blank">0-?</a>
+              </span>
+            
+              <span class="links-of-author-item">
+                <a href="http://ios.dog" target="_blank">ios.dog</a>
+              </span>
+            
+              <span class="links-of-author-item">
+                <a href="http://jucsinyu.com" target="_blank">jucsinyu</a>
+              </span>
+            
+          
+        </div>
+
+      </section>
+
+      
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc-indicator-top post-toc-indicator">
+            <i class="fa fa-angle-double-up"></i>
+          </div>
+          <div class="post-toc">
+            
+              
+            
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#背景"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Interceptor介绍"><span class="nav-number">2.</span> <span class="nav-text">Interceptor介绍</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#高版本SpringMVC（3-1+）"><span class="nav-number">3.</span> <span class="nav-text">高版本SpringMVC（3.1+）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#低版本SpringMVC（3-1以下）"><span class="nav-number">4.</span> <span class="nav-text">低版本SpringMVC（3.1以下）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#利用AspectJ_AOP代理"><span class="nav-number">5.</span> <span class="nav-text">利用AspectJ AOP代理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#总结"><span class="nav-number">6.</span> <span class="nav-text">总结</span></a></li></ol></div>
+            
+          </div>
+          <div class="post-toc-indicator-bottom post-toc-indicator">
+            <i class="fa fa-angle-double-down"></i>
+          </div>
+        </section>
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright" >
+  
+  &copy;  2015 - 
+  <span itemprop="copyrightYear">2016</span>
+  <span class="with-love">
+    <i class="icon-next-heart fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">谢照东</span>
+</div>
+
+<div class="powered-by">
+  由 <a class="theme-link" href="http://hexo.io">Hexo</a> 强力驱动
+</div>
+
+<div class="theme-info">
+  主题 -
+  <a class="theme-link" href="https://github.com/iissnan/hexo-theme-next">
+    NexT.Pisces
+  </a>
+</div>
+
+
+
+      </div>
+    </footer>
+
+    <div class="back-to-top"></div>
+  </div>
+
+  
+
+
+  
+
+
+
+  <script type="text/javascript" src="/vendors/jquery/index.js?v=2.1.3"></script>
+
+  <script type="text/javascript" src="/vendors/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+
+  <script type="text/javascript" src="/vendors/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+
+  <script type="text/javascript" src="/vendors/velocity/velocity.min.js"></script>
+
+  <script type="text/javascript" src="/vendors/velocity/velocity.ui.min.js"></script>
+
+  <script type="text/javascript" src="/vendors/fancybox/source/jquery.fancybox.pack.js"></script>
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.0.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.0.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.0.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.0.0"></script>
+
+
+
+  
+  
+<script type="text/javascript" src="/js/src/scrollspy.js?v=5.0.0"></script>
+
+<script type="text/javascript" id="sidebar.toc.highlight">
+  $(document).ready(function () {
+    var tocSelector = '.post-toc';
+    var $tocSelector = $(tocSelector);
+    var activeCurrentSelector = '.active-current';
+
+    $tocSelector
+      .on('activate.bs.scrollspy', function () {
+        var $currentActiveElement = $(tocSelector + ' .active').last();
+
+        removeCurrentActiveClass();
+        $currentActiveElement.addClass('active-current');
+
+        $tocSelector[0].scrollTop = $currentActiveElement.position().top;
+      })
+      .on('clear.bs.scrollspy', function () {
+        removeCurrentActiveClass();
+      });
+
+    function removeCurrentActiveClass () {
+      $(tocSelector + ' ' + activeCurrentSelector)
+        .removeClass(activeCurrentSelector.substring(1));
+    }
+
+    function processTOC () {
+      getTOCMaxHeight();
+      toggleTOCOverflowIndicators();
+    }
+
+    function getTOCMaxHeight () {
+      var height = $('.sidebar').height() -
+                   $tocSelector.position().top -
+                   $('.post-toc-indicator-bottom').height();
+
+      $tocSelector.css('height', height);
+
+      return height;
+    }
+
+    function toggleTOCOverflowIndicators () {
+      tocOverflowIndicator(
+        '.post-toc-indicator-top',
+        $tocSelector.scrollTop() > 0 ? 'show' : 'hide'
+      );
+
+      tocOverflowIndicator(
+        '.post-toc-indicator-bottom',
+        $tocSelector.scrollTop() >= $tocSelector.find('ol').height() - $tocSelector.height() ? 'hide' : 'show'
+      )
+    }
+
+    $(document).on('sidebar.motion.complete', function () {
+      processTOC();
+    });
+
+    $('body').scrollspy({ target: tocSelector });
+    $(window).on('resize', function () {
+      if ( $('.sidebar').hasClass('sidebar-active') ) {
+        processTOC();
+      }
+    });
+
+    onScroll($tocSelector);
+
+    function onScroll (element) {
+      element.on('mousewheel DOMMouseScroll', function (event) {
+          var oe = event.originalEvent;
+          var delta = oe.wheelDelta || -oe.detail;
+
+          this.scrollTop += ( delta < 0 ? 1 : -1 ) * 30;
+          event.preventDefault();
+
+          toggleTOCOverflowIndicators();
+      });
+    }
+
+    function tocOverflowIndicator (indicator, action) {
+      var $indicator = $(indicator);
+      var opacity = action === 'show' ? 1 : 0;
+      $indicator.velocity ?
+        $indicator.velocity('stop').velocity({
+          opacity: opacity
+        }, { duration: 100 }) :
+        $indicator.stop().animate({
+          opacity: opacity
+        }, 100);
+    }
+
+  });
+</script>
+
+<script type="text/javascript" id="sidebar.nav">
+  $(document).ready(function () {
+    var html = $('html');
+    var TAB_ANIMATE_DURATION = 200;
+    var hasVelocity = $.isFunction(html.velocity);
+
+    $('.sidebar-nav li').on('click', function () {
+      var item = $(this);
+      var activeTabClassName = 'sidebar-nav-active';
+      var activePanelClassName = 'sidebar-panel-active';
+      if (item.hasClass(activeTabClassName)) {
+        return;
+      }
+
+      var currentTarget = $('.' + activePanelClassName);
+      var target = $('.' + item.data('target'));
+
+      hasVelocity ?
+        currentTarget.velocity('transition.slideUpOut', TAB_ANIMATE_DURATION, function () {
+          target
+            .velocity('stop')
+            .velocity('transition.slideDownIn', TAB_ANIMATE_DURATION)
+            .addClass(activePanelClassName);
+        }) :
+        currentTarget.animate({ opacity: 0 }, TAB_ANIMATE_DURATION, function () {
+          currentTarget.hide();
+          target
+            .stop()
+            .css({'opacity': 0, 'display': 'block'})
+            .animate({ opacity: 1 }, TAB_ANIMATE_DURATION, function () {
+              currentTarget.removeClass(activePanelClassName);
+              target.addClass(activePanelClassName);
+            });
+        });
+
+      item.siblings().removeClass(activeTabClassName);
+      item.addClass(activeTabClassName);
+    });
+
+    $('.post-toc a').on('click', function (e) {
+      e.preventDefault();
+      var targetSelector = NexT.utils.escapeSelector(this.getAttribute('href'));
+      var offset = $(targetSelector).offset().top;
+      hasVelocity ?
+        html.velocity('stop').velocity('scroll', {
+          offset: offset  + 'px',
+          mobileHA: false
+        }) :
+        $('html, body').stop().animate({
+          scrollTop: offset
+        }, 500);
+    });
+
+    // Expand sidebar on post detail page by default, when post has a toc.
+    NexT.motion.middleWares.sidebar = function () {
+      var $tocContent = $('.post-toc-content');
+
+      if (CONFIG.sidebar === 'post') {
+        if ($tocContent.length > 0 && $tocContent.html().trim().length > 0) {
+          NexT.utils.displaySidebar();
+        }
+      }
+    };
+  });
+</script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.0.0"></script>
+
+
+
+  
+
+  
+    
+  
+
+  <script type="text/javascript">
+    var duoshuoQuery = {short_name:"xiezhaodong"};
+    (function() {
+      var ds = document.createElement('script');
+      ds.type = 'text/javascript';ds.async = true;
+      ds.id = 'duoshuo-script';
+      ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+      ds.charset = 'UTF-8';
+      (document.getElementsByTagName('head')[0]
+      || document.getElementsByTagName('body')[0]).appendChild(ds);
+    })();
+  </script>
+
+  
+    
+  
+
+
+
+
+
+  
+  
+
+  
+  
+
+
+</body>
+</html>

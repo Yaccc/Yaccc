@@ -4,6 +4,64 @@
 
     
   <url>
+    <loc>http://yaccc.gitcafe.io/2016/08/31/%E5%9C%A8SpingMVC%E7%9A%84Interceptor%E4%B8%AD%E5%A6%82%E4%BD%95%E5%BE%97%E5%88%B0%E8%A2%AB%E8%B0%83%E7%94%A8%E6%96%B9%E6%B3%95%E5%90%8D/</loc>
+    <lastmod>2016-08-31T16:39:18.000Z</lastmod>
+    <data>
+        <display>
+        <title>在SpingMVC的Interceptor中如何得到被调用方法名</title>
+        <pubTime>2016-08-31T10:34:44.000Z</pubTime>
+        
+        <tag>MVC</tag>
+         
+        <tag>Spring</tag>
+         
+        <tag>java</tag>
+         
+        <tag>反射，方法名</tag>
+         
+         
+           
+             
+              <breadCrumb title="java" url="http://yaccc.gitcafe.io/categories/java/"/>
+          
+             
+              <breadCrumb title="Spring" url="http://yaccc.gitcafe.io/categories/java/Spring/"/>
+          
+             
+              <breadCrumb title="MVC" url="http://yaccc.gitcafe.io/categories/java/Spring/MVC/"/>
+          
+             
+        </display>
+    </data>
+    </url>
+
+    
+  <url>
+    <loc>http://yaccc.gitcafe.io/2015/12/06/%E6%B7%B1%E5%85%A5java%E5%8D%95%E4%BE%8B%E6%A8%A1%E5%BC%8F/</loc>
+    <lastmod>2016-08-31T13:48:00.000Z</lastmod>
+    <data>
+        <display>
+        <title>深入java单例模式</title>
+        <pubTime>2015-12-05T16:05:34.000Z</pubTime>
+        
+        <tag>java</tag>
+         
+        <tag>设计模式</tag>
+         
+         
+           
+             
+              <breadCrumb title="java" url="http://yaccc.gitcafe.io/categories/java/"/>
+          
+             
+              <breadCrumb title="设计模式" url="http://yaccc.gitcafe.io/categories/java/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+          
+        </display>
+    </data>
+    </url>
+
+    
+  <url>
     <loc>http://yaccc.gitcafe.io/2016/03/05/ThreadLocal%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E8%A7%A3%E5%AF%86/</loc>
     <lastmod>2016-03-04T18:26:38.000Z</lastmod>
     <data>
@@ -212,31 +270,6 @@
               <breadCrumb title="并发" url="http://yaccc.gitcafe.io/categories/java/%E5%A4%9A%E7%BA%BF%E7%A8%8B/%E5%B9%B6%E5%8F%91/"/>
           
              
-        </display>
-    </data>
-    </url>
-
-    
-  <url>
-    <loc>http://yaccc.gitcafe.io/2015/12/06/%E6%B7%B1%E5%85%A5java%E5%8D%95%E4%BE%8B%E6%A8%A1%E5%BC%8F/</loc>
-    <lastmod>2016-01-10T07:21:35.000Z</lastmod>
-    <data>
-        <display>
-        <title>深入java单例模式</title>
-        <pubTime>2015-12-05T16:05:34.000Z</pubTime>
-        
-        <tag>java</tag>
-         
-        <tag>设计模式</tag>
-         
-         
-           
-             
-              <breadCrumb title="java" url="http://yaccc.gitcafe.io/categories/java/"/>
-          
-             
-              <breadCrumb title="设计模式" url="http://yaccc.gitcafe.io/categories/java/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
-          
         </display>
     </data>
     </url>
