@@ -4,7 +4,7 @@
   
   <link href="/atom.xml" rel="self"/>
   <link href="http://yaccc.gitchub.io/"/>
-  <updated>2016-09-30T09:13:48.000Z</updated>
+  <updated>2017-01-15T09:59:00.000Z</updated>
   <id>http://yaccc.gitchub.io/</id>
   
   <author>
@@ -13,6 +13,170 @@
   </author>
   
   <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title><![CDATA[MySQL事务隔离级别和Spring事务关系介绍]]></title>
+    <link href="http://yaccc.gitchub.io/2017/01/15/MySQL%E4%BA%8B%E5%8A%A1%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB%E5%92%8CSpring%E4%BA%8B%E5%8A%A1%E5%85%B3%E7%B3%BB%E4%BB%8B%E7%BB%8D/"/>
+    <id>http://yaccc.gitchub.io/2017/01/15/MySQL事务隔离级别和Spring事务关系介绍/</id>
+    <published>2017-01-15T15:59:59.000Z</published>
+    <updated>2017-01-15T09:59:00.000Z</updated>
+    <content type="html"><![CDATA[<h3 id="事务隔离级别介绍">事务隔离级别介绍</h3><table>
+<thead>
+<tr>
+<th>隔离级别</th>
+<th style="text-align:center">脏读</th>
+<th style="text-align:right">不可重复读</th>
+<th style="text-align:right">幻读</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>未提交读（Read uncommitted）</td>
+<td style="text-align:center">可能</td>
+<td style="text-align:right">可能</td>
+<td style="text-align:right">可能</td>
+</tr>
+<tr>
+<td>已提交读（Read committed）</td>
+<td style="text-align:center">不可能</td>
+<td style="text-align:right">可能</td>
+<td style="text-align:right">可能</td>
+</tr>
+<tr>
+<td>可重复读（Repeatable read）</td>
+<td style="text-align:center">不可能</td>
+<td style="text-align:right">不可能</td>
+<td style="text-align:right">可能</td>
+</tr>
+<tr>
+<td>可串行化（Serializable ）</td>
+<td style="text-align:center">不可能</td>
+<td style="text-align:right">不可能</td>
+<td style="text-align:right">不可能</td>
+</tr>
+</tbody>
+</table>
+<ol>
+<li>未提交读(Read Uncommitted)：允许脏读，也就是可能读取到其他会话中未提交事务修改的数据</li>
+<li>提交读(Read Committed)：只能读取到已经提交的数据。Oracle等多数数据库默认都是该级别 (不重复读)</li>
+<li>可重复读(Repeated Read)：可重复读。在同一个事务内的查询都是事务开始时刻一致的，InnoDB默认级别。在SQL标准中，该隔离级别消除了不可重复读，但是还存在幻象读，但是innoDB解决了幻读</li>
+<li>串行读(Serializable)：完全串行化的读，每次读都需要获得表级共享锁，读写相互都会阻塞</li>
+</ol>
+<p>接下来一次来验证每个隔离级别的特性,首先我们先建一张表,我们建立账户表account用来测试我们的事务隔离级别：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="operator"><span class="keyword">CREATE</span> <span class="keyword">TABLE</span> <span class="keyword">account</span> (</span><br><span class="line">    <span class="string">`id`</span> <span class="built_in">int</span>(<span class="number">11</span>) <span class="keyword">NOT</span> <span class="literal">NULL</span> AUTO_INCREMENT,</span><br><span class="line">    <span class="string">`customer_name`</span> <span class="built_in">varchar</span>(<span class="number">255</span>) <span class="keyword">NOT</span> <span class="literal">NULL</span>,</span><br><span class="line">    <span class="string">`money`</span> <span class="built_in">int</span>(<span class="number">11</span>) <span class="keyword">NOT</span> <span class="literal">NULL</span>,</span><br><span class="line">    PRIMARY <span class="keyword">KEY</span> (<span class="string">`id`</span>),</span><br><span class="line">    <span class="keyword">UNIQUE</span> <span class="string">`uniq_name`</span> <span class="keyword">USING</span> BTREE (customer_name)</span><br><span class="line">) <span class="keyword">ENGINE</span>=<span class="string">`InnoDB`</span> AUTO_INCREMENT=<span class="number">10</span> <span class="keyword">DEFAULT</span> <span class="built_in">CHARACTER</span> <span class="keyword">SET</span> utf8 <span class="keyword">COLLATE</span> utf8_general_ci ROW_FORMAT=<span class="keyword">COMPACT</span> <span class="keyword">CHECKSUM</span>=<span class="number">0</span> DELAY_KEY_WRIT</span></span><br></pre></td></tr></table></figure>
+<h3 id="RU_（read_uncommitted）读未提交隔离级别">RU （read uncommitted）读未提交隔离级别</h3><p>首先我们开启Console A,然后设置session事务隔离级别为read uncommitted; 然后同样开启Console B，设置成read uncommitted;</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; set session transaction isolation level read uncommitted;</span><br><span class="line">Query OK, 0 rows affected (0.03 sec)</span><br><span class="line"> </span><br><span class="line">mysql&gt; select @@session.tx_isolation;</span><br><span class="line">+------------------------+</span><br><span class="line">| @@session.tx_isolation |</span><br><span class="line">+------------------------+</span><br><span class="line">| READ-UNCOMMITTED       |</span><br><span class="line">+------------------------+</span><br><span class="line">1 rows in set (0.03 sec)</span><br></pre></td></tr></table></figure>
+<p>我们两个console的事务隔离级别都是read uncommitted，下面测试RU级别会发生的情况</p>
+<p><img src="http://img.blog.csdn.net/20170115175207366?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt=""></p>
+<h4 id="小结：">小结：</h4><p>可以发现RU模式下，一个事务可以读取到另一个未提交(commit)的数据，导致了脏读。如果B事务回滚了，就会造成数据的不一致。RU是事务隔离级别最低的。</p>
+<h3 id="RC_（read_committed）读提交隔离级别">RC （read committed）读提交隔离级别</h3><p>现在我们将事务隔离级别设置成RC (read committed)</p>
+ <figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="operator"><span class="keyword">set</span> <span class="keyword">session</span> <span class="keyword">transaction</span> <span class="keyword">isolation</span> <span class="keyword">level</span> <span class="keyword">read</span> uncommitted;</span></span><br></pre></td></tr></table></figure>
+<p><img src="http://img.blog.csdn.net/20170115175233783?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt=""><br><img src="http://img.blog.csdn.net/20170115175251674?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt=""></p>
+<h5 id="小结">小结</h5><p>我们在RC模式下，可以发现。在console B没有提交数据修改的commit的时候，console A是读不到修改后的数据的，这就避免了在RU模式中的脏读，但是有一个问题我们会发现，在console A同一个事务中。两次select的数据不一样，这就存在了不可重复读的问题.PS：RC事务隔离级别是Oracle数据库的默认隔离级别.</p>
+<h3 id="RR_（Repeatable_read）可重复读隔离级别">RR （Repeatable read）可重复读隔离级别</h3><p><img src="http://img.blog.csdn.net/20170115175307064?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt=""><br><img src="http://img.blog.csdn.net/20170115175318368?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt=""></p>
+<h4 id="小结:">小结:</h4><p>在RR级别中，我们解决了不可重复读的问题，即在这种隔离级别下，在一个事务中我们能够保证能够获取到一样的数据（即使已经有其他事务修改了我们的数据）。但是无法避免幻读，幻读简单的解释就是在数据有新增的时候，也无法保证两次得到的数据不一致，但是不同数据库对不同的RR级别有不同的实现，有时候或加上间隙锁来避免幻读。</p>
+<h3 id="innoDB_解决了幻读">innoDB 解决了幻读</h3><p>前面的定义中RR级别是可能产生幻读，这是在传统的RR级别定义中会出现的。但是在innoDB引擎中利用MVCC多版本并发控制解决了这个问题</p>
+<p><img src="http://img.blog.csdn.net/20170115175332924?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt=""><br><img src="http://img.blog.csdn.net/20170115175344690?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt=""></p>
+<p>这算是幻读吗？在标准的RR隔离级别定义中是无法解决幻读问题的，比如我要保证可重复读，那么我们可以在我们的结果集的范围加一个锁（between 1 and 11），防止数据更改.但是我们毕竟不是锁住真个表，所以insert数据我们并不能保证他不插入。所以是有幻读的问题存在的。但是innodb引擎解决了幻读的问题，基于MVCC（多版本并发控制）:在InnoDB中，会在每行数据后添加两个额外的隐藏的值来实现MVCC，这两个值一个记录这行数据何时被创建，另外一个记录这行数据何时过期（或者被删除）。 在实际操作中，存储的并不是时间，而是事务的版本号，每开启一个新事务，事务的版本号就会递增。所以当我们执行update的时候，当前事务的版本号已经更新了？所以也算是幻读？？(存疑)主要是gap间隙锁+MVCC解决幻读问题？</p>
+<h3 id="串行化隔离级别：">串行化隔离级别：</h3><p>所有事物串行,最高隔离级别，性能最差</p>
+<h3 id="存在的问题？">存在的问题？</h3><p>在RR模型,我们虽然避免了幻读，但是存在一个问题，我们得到的数据不是数据中实时的数据，如果是对实时数据比较敏感的业务，这是不现实的。<br>对于这种读取历史数据的方式，我们叫它快照读 (snapshot read)，而读取数据库当前版本数据的方式，叫当前读 (current read)。很显然，在MVCC中：</p>
+<ul>
+<li>快照读：就是select<ul>
+<li>select * from table ….;</li>
+</ul>
+</li>
+<li>当前读：特殊的读操作，插入/更新/删除操作，属于当前读，处理的都是当前的数据，需要加锁。<ul>
+<li>select * from table where ? lock in share mode;</li>
+<li>select * from table where ? for update;</li>
+<li>insert;</li>
+<li>update ;</li>
+<li>delete;</li>
+</ul>
+</li>
+</ul>
+<p>事务的隔离级别实际上都是定义了当前读的级别，MySQL为了减少锁处理（包括等待其它锁）的时间，提升并发能力，引入了快照读的概念，使得select不用加锁。而update、insert这些“当前读”，就需要另外的模块来解决了。</p>
+<p>比如，我们有以下的订单业务场景，我们队一个商品下单的操作，我们得首先检查这个订单的数量还剩多少，然后下单。</p>
+<p>事务1:</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="operator"><span class="keyword">select</span> <span class="keyword">num</span> <span class="keyword">from</span> t_goods <span class="keyword">where</span> <span class="keyword">id</span>=<span class="number">1</span>;</span></span><br><span class="line"><span class="operator"><span class="keyword">update</span> t_goods <span class="keyword">set</span> <span class="keyword">num</span>=<span class="keyword">num</span>-$mynum <span class="keyword">where</span> <span class="keyword">id</span>=<span class="number">1</span>;</span></span><br></pre></td></tr></table></figure>
+<p>事务2：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="operator"><span class="keyword">select</span> <span class="keyword">num</span> <span class="keyword">from</span> t_goods <span class="keyword">where</span> <span class="keyword">id</span>=<span class="number">1</span>;</span></span><br><span class="line"><span class="operator"><span class="keyword">update</span> t_goods <span class="keyword">set</span> <span class="keyword">num</span>=<span class="keyword">num</span>-$mynum <span class="keyword">where</span> <span class="keyword">id</span>=<span class="number">1</span>;</span></span><br></pre></td></tr></table></figure>
+<p>假设这个时候数量只有1，我们下单也是只有1.如果在并发的情况下，事务1查询到还有一单准备下单，但是这个时候事务2已经提交了。订单变成0.这个事务1在执行update，就会造成事故。</p>
+<ol>
+<li>解决问题方法1(悲观锁)：就是利用for update对着个商品加锁，事务完成之后释放锁。切记where条件的有索引，否则会锁全表。</li>
+<li>解决方法2(乐观锁)：给数据库表加上个version字段。然后SQL改写:</li>
+</ol>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="operator"><span class="keyword">select</span> <span class="keyword">num</span>,<span class="keyword">version</span> <span class="keyword">from</span> t_goods <span class="keyword">where</span> <span class="keyword">id</span>=<span class="number">1</span>;</span></span><br><span class="line"><span class="operator"><span class="keyword">update</span> t_goods <span class="keyword">set</span> <span class="keyword">num</span>=<span class="keyword">num</span>-<span class="number">1</span>,<span class="keyword">version</span>=verison+<span class="number">1</span> <span class="keyword">where</span> <span class="keyword">id</span>=<span class="number">1</span> <span class="keyword">and</span> <span class="keyword">version</span>=$&#123;<span class="keyword">version</span>&#125;</span></span><br></pre></td></tr></table></figure>
+<h3 id="Spring管理事务的方式。">Spring管理事务的方式。</h3><h4 id="编程式事务">编程式事务</h4><p>编程式事务就是利用手动代码编写事务相关的业务逻辑，这种方式比较复杂、啰嗦，但是更加灵活可控制（个人比较喜欢）</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">testTransactionTemplate</span><span class="params">()</span> </span>&#123;</span><br><span class="line"> </span><br><span class="line">  TransactionTemplate transactionTemplate = <span class="keyword">new</span> TransactionTemplate(txManager); </span><br><span class="line">  transactionTemplate.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED); <span class="comment">//设置事务隔离级别</span></span><br><span class="line">  transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRED);<span class="comment">//设置为required传播级别</span></span><br><span class="line">  ....</span><br><span class="line">  transactionTemplate.execute(<span class="keyword">new</span> TransactionCallbackWithoutResult() &#123; </span><br><span class="line">      <span class="annotation">@Override</span> </span><br><span class="line">      <span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">doInTransactionWithoutResult</span><span class="params">(TransactionStatus status)</span> </span>&#123;  <span class="comment">//事务块</span></span><br><span class="line">         jdbcTemplate.update(INSERT_SQL, <span class="string">"test"</span>); </span><br><span class="line">  &#125;&#125;); </span><br><span class="line">  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="声明式事务">声明式事务</h4><ol>
+<li>为了避免我们每次都手动写代码，利用Spring AOP的方式对每个方法代理环绕，利用xml配置避免了写代码。</li>
+</ol>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">&lt;tx:advice id="txAdvice" transaction-manager="txManager"&gt; </span><br><span class="line">&lt;tx:attributes&gt;  &lt;!--设置所有匹配的方法，然后设置传播级别和事务隔离--&gt;</span><br><span class="line">           &lt;tx:method name="save*" propagation="REQUIRED" /&gt; </span><br><span class="line">           &lt;tx:method name="add*" propagation="REQUIRED" /&gt; </span><br><span class="line">           &lt;tx:method name="create*" propagation="REQUIRED" /&gt; </span><br><span class="line">           &lt;tx:method name="insert*" propagation="REQUIRED" /&gt; </span><br><span class="line">           &lt;tx:method name="update*" propagation="REQUIRED" /&gt; </span><br><span class="line">           &lt;tx:method name="merge*" propagation="REQUIRED" /&gt; </span><br><span class="line">           &lt;tx:method name="del*" propagation="REQUIRED" /&gt; </span><br><span class="line">           &lt;tx:method name="remove*" propagation="REQUIRED" /&gt; </span><br><span class="line">           &lt;tx:method name="put*" propagation="REQUIRED" /&gt; </span><br><span class="line">           &lt;tx:method name="get*" propagation="SUPPORTS" read-only="true" /&gt; </span><br><span class="line">           &lt;tx:method name="count*" propagation="SUPPORTS" read-only="true" /&gt; </span><br><span class="line">          &lt;tx:method name="find*" propagation="SUPPORTS" read-only="true" /&gt; </span><br><span class="line">          &lt;tx:method name="list*" propagation="SUPPORTS" read-only="true" /&gt; </span><br><span class="line">          &lt;tx:method name="*" propagation="SUPPORTS" read-only="true" /&gt; </span><br><span class="line">       &lt;/tx:attributes&gt; </span><br><span class="line">&lt;/tx:advice&gt; </span><br><span class="line">&lt;aop:config&gt; </span><br><span class="line">       &lt;aop:pointcut id="txPointcut" expression="execution(* org.transaction..service.*.*(..))" /&gt; </span><br><span class="line">       &lt;aop:advisor advice-ref="txAdvice" pointcut-ref="txPointcut" /&gt; </span><br><span class="line">&lt;/aop:config&gt;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>同时也可以用注解的方式</li>
+</ol>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="title">tx:annotation-driven</span> <span class="attribute">transaction-manager</span>=<span class="value">"transactioManager"</span> /&gt;</span><span class="comment">&lt;!--开启注解的方式--&gt;</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="annotation">@Target</span>(&#123;ElementType.METHOD, ElementType.TYPE&#125;)</span><br><span class="line"><span class="annotation">@Retention</span>(RetentionPolicy.RUNTIME)</span><br><span class="line"><span class="annotation">@Inherited</span></span><br><span class="line"><span class="annotation">@Documented</span></span><br><span class="line"><span class="keyword">public</span> <span class="annotation">@interface</span> Transactional &#123;</span><br><span class="line">   <span class="annotation">@AliasFor</span>(<span class="string">"transactionManager"</span>)</span><br><span class="line">   <span class="function">String <span class="title">value</span><span class="params">()</span> <span class="keyword">default</span> ""</span>;</span><br><span class="line">   <span class="annotation">@AliasFor</span>(<span class="string">"value"</span>)</span><br><span class="line">   <span class="function">String <span class="title">transactionManager</span><span class="params">()</span> <span class="keyword">default</span> ""</span>;</span><br><span class="line">   <span class="function">Propagation <span class="title">propagation</span><span class="params">()</span> <span class="keyword">default</span> Propagation.REQUIRED</span>;<span class="comment">//传播级别</span></span><br><span class="line">  </span><br><span class="line">   <span class="function">Isolation <span class="title">isolation</span><span class="params">()</span> <span class="keyword">default</span> Isolation.DEFAULT</span>;<span class="comment">//事务隔离级别</span></span><br><span class="line">   <span class="function"><span class="keyword">int</span> <span class="title">timeout</span><span class="params">()</span> <span class="keyword">default</span> TransactionDefinition.TIMEOUT_DEFAULT</span>;<span class="comment">//事务超时时间</span></span><br><span class="line">   <span class="function"><span class="keyword">boolean</span> <span class="title">readOnly</span><span class="params">()</span> <span class="keyword">default</span> <span class="keyword">false</span></span>;<span class="comment">//只读事务</span></span><br><span class="line">   Class&lt;? extends Throwable&gt;[] rollbackFor() <span class="keyword">default</span> &#123;&#125;;<span class="comment">//抛出哪些异常 会执行回滚</span></span><br><span class="line">   String[] rollbackForClassName() <span class="keyword">default</span> &#123;&#125;;</span><br><span class="line">   Class&lt;? extends Throwable&gt;[] noRollbackFor() <span class="keyword">default</span> &#123;&#125;;</span><br><span class="line">   String[] noRollbackForClassName() <span class="keyword">default</span> &#123;&#125;;<span class="comment">//不回滚的异常名称</span></span><br><span class="line"> </span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//transaction注解可以放在方法上或者类上</span></span><br></pre></td></tr></table></figure>
+<p>我们在这里不对两种事务编程做过多的讲解</p>
+<h3 id="Spring事务传播：">Spring事务传播：</h3><h4 id="事务传播行为：">事务传播行为：</h4><p>Spring管理的事务是逻辑事务，而且物理事务和逻辑事务最大差别就在于事务传播行为，事务传播行为用于指定在多个事务方法间调用时，事务是如何在这些方法间传播的，Spring共支持7种传播行为<br>为了演示事务传播行为，我们新建一张用户表</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">EATE TABLE user (</span><br><span class="line">    `id` int(11) NOT NULL AUTO_INCREMENT,</span><br><span class="line">    `username` varchar(255) NOT NULL,</span><br><span class="line">    `pwd` varchar(255) NOT NULL,</span><br><span class="line">    PRIMARY KEY (`id`)</span><br><span class="line">) ENGINE=`InnoDB` AUTO_INCREMENT=10 DEFAULT CHARACTER <span class="operator"><span class="keyword">SET</span> utf8 <span class="keyword">COLLATE</span> utf8_general_ci ROW_FORMAT=<span class="keyword">COMPACT</span> <span class="keyword">CHECKSUM</span>=<span class="number">0</span> DELAY_KEY_WRITE=<span class="number">0</span>;</span></span><br></pre></td></tr></table></figure>
+<h4 id="Required：">Required：</h4><p>必须有逻辑事务，否则新建一个事务，使用PROPAGATION_REQUIRED指定，表示如果当前存在一个逻辑事务，则加入该逻辑事务，否则将新建一个逻辑事务，如下图所示；</p>
+<p><img src="http://img.blog.csdn.net/20170115175403306?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt=""></p>
+<p>测试的代码如下，在account插入的地方主动回滚</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">insertAccount</span><span class="params">(<span class="keyword">final</span> String customer, <span class="keyword">final</span> <span class="keyword">int</span> money)</span> </span>&#123;</span><br><span class="line">    transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRED);<span class="comment">//设置为required传播级别</span></span><br><span class="line">   <span class="keyword">int</span> re= transactionTemplate.execute(<span class="keyword">new</span> TransactionCallback&lt;Integer&gt;() &#123;</span><br><span class="line">        <span class="function"><span class="keyword">public</span> Integer <span class="title">doInTransaction</span><span class="params">( TransactionStatus status)</span> </span>&#123;</span><br><span class="line">            <span class="keyword">int</span> i = accountDao.insertAccount(customer, money);</span><br><span class="line">            status.setRollbackOnly();<span class="comment">//主动回滚</span></span><br><span class="line">            <span class="keyword">return</span> i;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">return</span> re;</span><br><span class="line">&#125;</span><br><span class="line"> <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">inertUser</span><span class="params">(<span class="keyword">final</span> String username, <span class="keyword">final</span> String password)</span> </span>&#123;</span><br><span class="line">        transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRED);<span class="comment">//设置为required传播级别</span></span><br><span class="line">        transactionTemplate.execute(<span class="keyword">new</span> TransactionCallbackWithoutResult() &#123;</span><br><span class="line">            <span class="annotation">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">doInTransactionWithoutResult</span><span class="params">(TransactionStatus status)</span> </span>&#123;</span><br><span class="line">                <span class="keyword">int</span> i = userDao.inertUser(username, password);</span><br><span class="line">                <span class="keyword">int</span> hahha = accountService.insertAccount(<span class="string">"hahha"</span>, <span class="number">2222</span>);</span><br><span class="line"><span class="comment">//                status.setRollbackOnly();</span></span><br><span class="line">                System.out.println(<span class="string">"user==="</span>+i);</span><br><span class="line">                System.out.println(<span class="string">"account===="</span>+hahha);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>按照required的逻辑，代码执行的逻辑如下：</p>
+<ol>
+<li>在调用userService对象的insert方法时，此方法用的是Required传播行为且此时Spring事务管理器发现还没开启逻辑事务，因此Spring管理器觉得开启逻辑事务</li>
+<li>在此逻辑事务中调用了accountService对象的insert方法，而在insert方法中发现同样用的是Required传播行为，因此直接使用该已经存在的逻辑事务；</li>
+<li>返回userService，执行完并关闭事务</li>
+</ol>
+<p>所以在这种情况下，两个事务属于同一个事务，一个回滚则两个任务都回滚。</p>
+<h4 id="RequiresNew：">RequiresNew：</h4><p>创建新的逻辑事务，使用PROPAGATION_REQUIRES_NEW指定，表示每次都创建新的逻辑事务（物理事务也是不同的）如下图所示：</p>
+<p><img src="http://img.blog.csdn.net/20170115175419299?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt=""></p>
+<h4 id="Supports：">Supports：</h4><p>支持当前事务，使用PROPAGATION_SUPPORTS指定，指如果当前存在逻辑事务，就加入到该逻辑事务，如果当前没有逻辑事务，就以非事务方式执行，如下图所示：</p>
+<p><img src="http://img.blog.csdn.net/20170115175431581?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt=""></p>
+<h4 id="NotSupported：">NotSupported：</h4><p>不支持事务，如果当前存在事务则暂停该事务，使用PROPAGATION_NOT_SUPPORTED指定，即以非事务方式执行，如果当前存在逻辑事务，就把当前事务暂停，以非事务方式执行。</p>
+<h4 id="Mandatory：">Mandatory：</h4><p>必须有事务，否则抛出异常，使用PROPAGATION_MANDATORY指定，使用当前事务执行，如果当前没有事务，则抛出异常（IllegalTransactionStateException）。当运行在存在逻辑事务中则以当前事务运行，如果没有运行在事务中，则抛出异常</p>
+<p><img src="http://img.blog.csdn.net/20170115175444151?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt=""></p>
+<h4 id="Never">Never</h4><p>不支持事务，如果当前存在是事务则抛出异常，使用PROPAGATION_NEVER指定，即以非事务方式执行，如果当前存在事务，则抛出异常（IllegalTransactionStateException）</p>
+<p><img src="http://img.blog.csdn.net/20170115175456870?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt=""></p>
+<h4 id="Nested：">Nested：</h4><p>嵌套事务支持，使用PROPAGATION_NESTED指定，如果当前存在事务，则在嵌套事务内执行，如果当前不存在事务，则创建一个新的事务，嵌套事务使用数据库中的保存点来实现，即嵌套事务回滚不影响外部事务，但外部事务回滚将导致嵌套事务回滚。</p>
+<p><img src="http://img.blog.csdn.net/20170115175510402?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center" alt=""></p>
+<h4 id="Nested和RequiresNew的区别：">Nested和RequiresNew的区别：</h4><ol>
+<li>RequiresNew每次都创建新的独立的物理事务，而Nested只有一个物理事务；</li>
+<li>Nested嵌套事务回滚或提交不会导致外部事务回滚或提交，但外部事务回滚将导致嵌套事务回滚，而 RequiresNew由于都是全新的事务，所以之间是无关联的；</li>
+<li><p>Nested使用JDBC 3的保存点(save point)实现，即如果使用低版本驱动将导致不支持嵌套事务。</p>
+<p>使用嵌套事务，必须确保具体事务管理器实现的nestedTransactionAllowed属性为true，否则不支持嵌套事务，如DataSourceTransactionManager默认支持，而HibernateTransactionManager默认不支持，需要设置来开启。</p>
+</li>
+</ol>
+<p>ps：博主水平有限，不妥之处请不吝赐教。转载需注明来自 yaccc.github.io</p>
+]]></content>
+    <summary type="html">
+    <![CDATA[<h3 id="事务隔离级别介绍">事务隔离级别介绍</h3><table>
+<thead>
+<tr>
+<th>隔离级别</th>
+<th style="text-align:center">脏读</th>
+<th style="text-align:right">不可重复读</]]>
+    </summary>
+    
+      <category term="MySQL" scheme="http://yaccc.gitchub.io/tags/MySQL/"/>
+    
+      <category term="Spring" scheme="http://yaccc.gitchub.io/tags/Spring/"/>
+    
+      <category term="事务" scheme="http://yaccc.gitchub.io/tags/%E4%BA%8B%E5%8A%A1/"/>
+    
+      <category term="隔离级别" scheme="http://yaccc.gitchub.io/tags/%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB/"/>
+    
+      <category term="MySQL" scheme="http://yaccc.gitchub.io/categories/MySQL/"/>
+    
+      <category term="事务" scheme="http://yaccc.gitchub.io/categories/MySQL/%E4%BA%8B%E5%8A%A1/"/>
+    
+      <category term="隔离级别" scheme="http://yaccc.gitchub.io/categories/MySQL/%E4%BA%8B%E5%8A%A1/%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB/"/>
+    
+      <category term="Spring" scheme="http://yaccc.gitchub.io/categories/MySQL/%E4%BA%8B%E5%8A%A1/%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB/Spring/"/>
+    
+  </entry>
   
   <entry>
     <title><![CDATA[ThreadLocal父子线程传递实现方案]]></title>
