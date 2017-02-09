@@ -5,10 +5,10 @@
   
 
 
-<html class="theme-next pisces use-motion">
+<html class="theme-next pisces use-motion" lang="zh-Hans">
 <head>
   <meta charset="UTF-8"/>
-<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
 
 
@@ -27,18 +27,48 @@
 
 
 
-  <link href="/vendors/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css"/>
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
 
 
 
 
-  <link href="//fonts.googleapis.com/css?family=Lato:300,400,700,400italic&subset=latin,latin-ext" rel="stylesheet" type="text/css">
+  
+  
+  
+  
+
+  
+    
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    
+    
+    <link href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&subset=latin,latin-ext" rel="stylesheet" type="text/css">
+  
 
 
 
-<link href="/vendors/font-awesome/css/font-awesome.min.css?v=4.4.0" rel="stylesheet" type="text/css" />
 
-<link href="/css/main.css?v=5.0.0" rel="stylesheet" type="text/css" />
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.0" rel="stylesheet" type="text/css" />
 
 
   <meta name="keywords" content="Hexo, Pisces" />
@@ -47,12 +77,12 @@
 
 
 
-  <link rel="alternate" href="/atom.xml" title="「浮生若梦」" type="application/atom+xml" />
+  <link rel="alternate" href="/atom.xml" title="「十年饮冰」" type="application/atom+xml" />
 
 
 
 
-  <link rel="shortcut icon" type="image/x-icon" href="/images/avator.jpg?v=5.0.0" />
+  <link rel="shortcut icon" type="image/x-icon" href="/images/touxiang.jpg?v=5.1.0" />
 
 
 
@@ -61,36 +91,60 @@
 
 <meta name="description" content="我没有梦想，但是我有一个野心！">
 <meta property="og:type" content="website">
-<meta property="og:title" content="「浮生若梦」">
+<meta property="og:title" content="「十年饮冰」">
 <meta property="og:url" content="http://yaccc.gitchub.io/index.html">
-<meta property="og:site_name" content="「浮生若梦」">
+<meta property="og:site_name" content="「十年饮冰」">
 <meta property="og:description" content="我没有梦想，但是我有一个野心！">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="「浮生若梦」">
+<meta name="twitter:title" content="「十年饮冰」">
 <meta name="twitter:description" content="我没有梦想，但是我有一个野心！">
 
 
 
-<script type="text/javascript" id="hexo.configuration">
+<script type="text/javascript" id="hexo.configurations">
   var NexT = window.NexT || {};
   var CONFIG = {
+    root: '/',
     scheme: 'Pisces',
-    sidebar: '[object Object]',
+    sidebar: {"position":"left","display":"post"},
     fancybox: true,
     motion: true,
     duoshuo: {
-      userId: 0,
-      author: '博主'
+      userId: '8771862',
+      author: '谢照东'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
     }
   };
 </script>
 
-  <title> 「浮生若梦」 </title>
+
+
+  <link rel="canonical" href="http://yaccc.gitchub.io/"/>
+
+
+
+
+
+  <title> 「十年饮冰」 </title>
 </head>
 
 <body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
 
   
+
+
+
+
+
+
+
+
 
 
 
@@ -114,11 +168,13 @@
   <div class="custom-logo-site-title">
     <a href="/"  class="brand" rel="start">
       <span class="logo-line-before"><i></i></span>
-      <span class="site-title">「浮生若梦」</span>
+      <span class="site-title">「十年饮冰」</span>
       <span class="logo-line-after"><i></i></span>
     </a>
   </div>
-  <p class="site-subtitle"></p>
+    
+      <p class="site-subtitle"></p>
+    
 </div>
 
 <div class="site-nav-toggle">
@@ -133,13 +189,13 @@
   
 
   
-    <ul id="menu" class="menu ">
+    <ul id="menu" class="menu">
       
         
         <li class="menu-item menu-item-home">
           <a href="/" rel="section">
             
-              <i class="menu-item-icon fa fa-home fa-fw"></i> <br />
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
             
             首页
           </a>
@@ -149,7 +205,7 @@
         <li class="menu-item menu-item-categories">
           <a href="/categories" rel="section">
             
-              <i class="menu-item-icon fa fa-th fa-fw"></i> <br />
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br />
             
             分类
           </a>
@@ -159,7 +215,7 @@
         <li class="menu-item menu-item-about">
           <a href="/about" rel="section">
             
-              <i class="menu-item-icon fa fa-user fa-fw"></i> <br />
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br />
             
             关于
           </a>
@@ -169,7 +225,7 @@
         <li class="menu-item menu-item-archives">
           <a href="/archives" rel="section">
             
-              <i class="menu-item-icon fa fa-archive fa-fw"></i> <br />
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
             
             归档
           </a>
@@ -179,7 +235,7 @@
         <li class="menu-item menu-item-tags">
           <a href="/tags" rel="section">
             
-              <i class="menu-item-icon fa fa-tags fa-fw"></i> <br />
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
             
             标签
           </a>
@@ -187,13 +243,13 @@
       
 
       
-      
-      
     </ul>
   
 
   
 </nav>
+
+
 
  </div>
     </header>
@@ -204,16 +260,9 @@
           <div id="content" class="content">
             
   <section id="posts" class="posts-expand">
-
-    
-
-    
-    
-
     
       
 
-  
   
 
   
@@ -221,6 +270,20 @@
   
 
   <article class="post post-type-normal " itemscope itemtype="http://schema.org/Article">
+  <link itemprop="mainEntityOfPage" href="http://yaccc.gitchub.io/2017/01/15/MySQL事务隔离级别和Spring事务关系介绍/">
+
+  <span style="display:none" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <meta itemprop="name" content="谢照东">
+    <meta itemprop="description" content="">
+    <meta itemprop="image" content="/images/touxiang.jpg">
+  </span>
+
+  <span style="display:none" itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+    <meta itemprop="name" content="「十年饮冰」">
+    <span style="display:none" itemprop="logo" itemscope itemtype="http://schema.org/ImageObject">
+      <img style="display:none;" itemprop="url image" alt="「十年饮冰」" src="">
+    </span>
+  </span>
 
     
       <header class="post-header">
@@ -242,24 +305,36 @@
 
         <div class="post-meta">
           <span class="post-time">
-            <span class="post-meta-item-icon">
-              <i class="fa fa-calendar-o"></i>
-            </span>
-            <span class="post-meta-item-text">发表于</span>
-            <time itemprop="dateCreated" datetime="2017-01-15T23:59:59+08:00" content="2017-01-15">
-              2017-01-15
-            </time>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="Дата создания записи" itemprop="dateCreated datePublished" datetime="2017-01-15T23:59:59+08:00">
+                2017-01-15
+              </time>
+            
+
+            
+
+            
           </span>
 
           
             <span class="post-category" >
-              &nbsp; | &nbsp;
+            
+              <span class="post-meta-divider">|</span>
+            
               <span class="post-meta-item-icon">
                 <i class="fa fa-folder-o"></i>
               </span>
-              <span class="post-meta-item-text">分类于</span>
               
-                <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
                   <a href="/categories/MySQL/" itemprop="url" rel="index">
                     <span itemprop="name">MySQL</span>
                   </a>
@@ -269,9 +344,8 @@
                 
                   ， 
                 
-
               
-                <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
                   <a href="/categories/MySQL/事务/" itemprop="url" rel="index">
                     <span itemprop="name">事务</span>
                   </a>
@@ -281,9 +355,8 @@
                 
                   ， 
                 
-
               
-                <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
                   <a href="/categories/MySQL/事务/隔离级别/" itemprop="url" rel="index">
                     <span itemprop="name">隔离级别</span>
                   </a>
@@ -293,9 +366,8 @@
                 
                   ， 
                 
-
               
-                <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
                   <a href="/categories/MySQL/事务/隔离级别/Spring/" itemprop="url" rel="index">
                     <span itemprop="name">Spring</span>
                   </a>
@@ -303,7 +375,6 @@
 
                 
                 
-
               
             </span>
           
@@ -311,18 +382,26 @@
           
             
               <span class="post-comments-count">
-                &nbsp; | &nbsp;
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
                 <a href="/2017/01/15/MySQL事务隔离级别和Spring事务关系介绍/#comments" itemprop="discussionUrl">
-                  <span class="post-comments-count ds-thread-count" data-thread-key="2017/01/15/MySQL事务隔离级别和Spring事务关系介绍/" itemprop="commentsCount"></span>
+                  <span class="post-comments-count ds-thread-count" data-thread-key="2017/01/15/MySQL事务隔离级别和Spring事务关系介绍/" itemprop="commentCount"></span>
                 </a>
               </span>
             
           
 
           
+          
 
           
+
           
+
+          
+
         </div>
       </header>
     
@@ -377,17 +456,29 @@
 提交读(Read Committed)：只能读取到已经提交的数据。Oracle等多数数据库默认都是该级别 (不重复读)
 可重复读(Repeated Read
           ...
-
-          <div class="post-more-link text-center">
+          <!--noindex-->
+          <div class="post-button text-center">
             <a class="btn" href="/2017/01/15/MySQL事务隔离级别和Spring事务关系介绍/#more" rel="contents">
               阅读全文 &raquo;
             </a>
           </div>
+          <!--/noindex-->
         
       
     </div>
 
+    <div>
+      
+    </div>
+
+    <div>
+      
+    </div>
+
+
     <footer class="post-footer">
+      
+
       
 
       
@@ -404,13 +495,26 @@
       
 
   
-  
 
   
   
   
 
   <article class="post post-type-normal " itemscope itemtype="http://schema.org/Article">
+  <link itemprop="mainEntityOfPage" href="http://yaccc.gitchub.io/2016/09/30/ThreadLocal父子线程传递实现方案/">
+
+  <span style="display:none" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <meta itemprop="name" content="谢照东">
+    <meta itemprop="description" content="">
+    <meta itemprop="image" content="/images/touxiang.jpg">
+  </span>
+
+  <span style="display:none" itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+    <meta itemprop="name" content="「十年饮冰」">
+    <span style="display:none" itemprop="logo" itemscope itemtype="http://schema.org/ImageObject">
+      <img style="display:none;" itemprop="url image" alt="「十年饮冰」" src="">
+    </span>
+  </span>
 
     
       <header class="post-header">
@@ -432,24 +536,36 @@
 
         <div class="post-meta">
           <span class="post-time">
-            <span class="post-meta-item-icon">
-              <i class="fa fa-calendar-o"></i>
-            </span>
-            <span class="post-meta-item-text">发表于</span>
-            <time itemprop="dateCreated" datetime="2016-09-30T16:53:13+08:00" content="2016-09-30">
-              2016-09-30
-            </time>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="Дата создания записи" itemprop="dateCreated datePublished" datetime="2016-09-30T16:53:13+08:00">
+                2016-09-30
+              </time>
+            
+
+            
+
+            
           </span>
 
           
             <span class="post-category" >
-              &nbsp; | &nbsp;
+            
+              <span class="post-meta-divider">|</span>
+            
               <span class="post-meta-item-icon">
                 <i class="fa fa-folder-o"></i>
               </span>
-              <span class="post-meta-item-text">分类于</span>
               
-                <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
                   <a href="/categories/java/" itemprop="url" rel="index">
                     <span itemprop="name">java</span>
                   </a>
@@ -459,9 +575,8 @@
                 
                   ， 
                 
-
               
-                <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
                   <a href="/categories/java/InheritableThreadLocal/" itemprop="url" rel="index">
                     <span itemprop="name">InheritableThreadLocal</span>
                   </a>
@@ -471,9 +586,8 @@
                 
                   ， 
                 
-
               
-                <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
                   <a href="/categories/java/InheritableThreadLocal/多线程/" itemprop="url" rel="index">
                     <span itemprop="name">多线程</span>
                   </a>
@@ -483,9 +597,8 @@
                 
                   ， 
                 
-
               
-                <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
                   <a href="/categories/java/InheritableThreadLocal/多线程/父子线程/" itemprop="url" rel="index">
                     <span itemprop="name">父子线程</span>
                   </a>
@@ -493,7 +606,6 @@
 
                 
                 
-
               
             </span>
           
@@ -501,18 +613,26 @@
           
             
               <span class="post-comments-count">
-                &nbsp; | &nbsp;
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
                 <a href="/2016/09/30/ThreadLocal父子线程传递实现方案/#comments" itemprop="discussionUrl">
-                  <span class="post-comments-count ds-thread-count" data-thread-key="2016/09/30/ThreadLocal父子线程传递实现方案/" itemprop="commentsCount"></span>
+                  <span class="post-comments-count ds-thread-count" data-thread-key="2016/09/30/ThreadLocal父子线程传递实现方案/" itemprop="commentCount"></span>
                 </a>
               </span>
             
           
 
           
+          
 
           
+
           
+
+          
+
         </div>
       </header>
     
@@ -533,17 +653,29 @@
 
 从
           ...
-
-          <div class="post-more-link text-center">
+          <!--noindex-->
+          <div class="post-button text-center">
             <a class="btn" href="/2016/09/30/ThreadLocal父子线程传递实现方案/#more" rel="contents">
               阅读全文 &raquo;
             </a>
           </div>
+          <!--/noindex-->
         
       
     </div>
 
+    <div>
+      
+    </div>
+
+    <div>
+      
+    </div>
+
+
     <footer class="post-footer">
+      
+
       
 
       
@@ -560,13 +692,26 @@
       
 
   
-  
 
   
   
   
 
   <article class="post post-type-normal " itemscope itemtype="http://schema.org/Article">
+  <link itemprop="mainEntityOfPage" href="http://yaccc.gitchub.io/2016/08/31/在SpingMVC的Interceptor中如何得到被调用方法名/">
+
+  <span style="display:none" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <meta itemprop="name" content="谢照东">
+    <meta itemprop="description" content="">
+    <meta itemprop="image" content="/images/touxiang.jpg">
+  </span>
+
+  <span style="display:none" itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+    <meta itemprop="name" content="「十年饮冰」">
+    <span style="display:none" itemprop="logo" itemscope itemtype="http://schema.org/ImageObject">
+      <img style="display:none;" itemprop="url image" alt="「十年饮冰」" src="">
+    </span>
+  </span>
 
     
       <header class="post-header">
@@ -588,24 +733,36 @@
 
         <div class="post-meta">
           <span class="post-time">
-            <span class="post-meta-item-icon">
-              <i class="fa fa-calendar-o"></i>
-            </span>
-            <span class="post-meta-item-text">发表于</span>
-            <time itemprop="dateCreated" datetime="2016-08-31T18:34:44+08:00" content="2016-08-31">
-              2016-08-31
-            </time>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="Дата создания записи" itemprop="dateCreated datePublished" datetime="2016-08-31T18:34:44+08:00">
+                2016-08-31
+              </time>
+            
+
+            
+
+            
           </span>
 
           
             <span class="post-category" >
-              &nbsp; | &nbsp;
+            
+              <span class="post-meta-divider">|</span>
+            
               <span class="post-meta-item-icon">
                 <i class="fa fa-folder-o"></i>
               </span>
-              <span class="post-meta-item-text">分类于</span>
               
-                <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
                   <a href="/categories/java/" itemprop="url" rel="index">
                     <span itemprop="name">java</span>
                   </a>
@@ -615,9 +772,8 @@
                 
                   ， 
                 
-
               
-                <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
                   <a href="/categories/java/Spring/" itemprop="url" rel="index">
                     <span itemprop="name">Spring</span>
                   </a>
@@ -627,9 +783,8 @@
                 
                   ， 
                 
-
               
-                <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
                   <a href="/categories/java/Spring/MVC/" itemprop="url" rel="index">
                     <span itemprop="name">MVC</span>
                   </a>
@@ -639,9 +794,8 @@
                 
                   ， 
                 
-
               
-                <span itemprop="about" itemscope itemtype="https://schema.org/Thing">
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
                   <a href="/categories/java/Spring/MVC/反射，方法名/" itemprop="url" rel="index">
                     <span itemprop="name">反射，方法名</span>
                   </a>
@@ -649,7 +803,6 @@
 
                 
                 
-
               
             </span>
           
@@ -657,18 +810,26 @@
           
             
               <span class="post-comments-count">
-                &nbsp; | &nbsp;
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
                 <a href="/2016/08/31/在SpingMVC的Interceptor中如何得到被调用方法名/#comments" itemprop="discussionUrl">
-                  <span class="post-comments-count ds-thread-count" data-thread-key="2016/08/31/在SpingMVC的Interceptor中如何得到被调用方法名/" itemprop="commentsCount"></span>
+                  <span class="post-comments-count ds-thread-count" data-thread-key="2016/08/31/在SpingMVC的Interceptor中如何得到被调用方法名/" itemprop="commentCount"></span>
                 </a>
               </span>
             
           
 
           
+          
 
           
+
           
+
+          
+
         </div>
       </header>
     
@@ -685,17 +846,29 @@
           背景为什么要在interceptor层获得方法名称呢？在分布式链路系统中我们需要在MVC框架层埋点，统计方法调用的耗时、trace信息等，目前公司内部没有统一的MVC框架，但是大多数都是使用的SpringMVC.所以我们在Interceptor这一层埋点就ok。在这里可以统计到方法调用完的耗时信息，同时也可以得到用户自定义的埋点信息。在这个过程中踩了一些坑，也尝试了各种方法
 Interceptor介绍1234567891011  /*  *主要是这两个方法,我们要拿到此时调用的方法名称，需要从handler中入手  */  @Override  public boolean preHandle
           ...
-
-          <div class="post-more-link text-center">
+          <!--noindex-->
+          <div class="post-button text-center">
             <a class="btn" href="/2016/08/31/在SpingMVC的Interceptor中如何得到被调用方法名/#more" rel="contents">
               阅读全文 &raquo;
             </a>
           </div>
+          <!--/noindex-->
         
       
     </div>
 
+    <div>
+      
+    </div>
+
+    <div>
+      
+    </div>
+
+
     <footer class="post-footer">
+      
+
       
 
       
@@ -709,7 +882,6 @@ Interceptor介绍1234567891011  /*  *主要是这两个方法,我们要拿到此
 
 
     
-
   </section>
 
   
@@ -718,7 +890,7 @@ Interceptor介绍1234567891011  /*  *主要是这两个方法,我们要拿到此
   </nav>
 
 
-
+          
           </div>
           
 
@@ -744,35 +916,42 @@ Interceptor介绍1234567891011  /*  *主要是这两个方法,我们要拿到此
 
       
 
-      <section class="site-overview sidebar-panel  sidebar-panel-active ">
+      <section class="site-overview sidebar-panel sidebar-panel-active">
         <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
           <img class="site-author-image" itemprop="image"
-               src="/images/avator.jpg"
+               src="/images/touxiang.jpg"
                alt="谢照东" />
           <p class="site-author-name" itemprop="name">谢照东</p>
           <p class="site-description motion-element" itemprop="description">我没有梦想，但是我有一个野心！</p>
         </div>
         <nav class="site-state motion-element">
-          <div class="site-state-item site-state-posts">
-            <a href="/archives">
-              <span class="site-state-item-count">12</span>
-              <span class="site-state-item-name">日志</span>
-            </a>
-          </div>
-
-          <div class="site-state-item site-state-categories">
-            <a href="/categories">
-              <span class="site-state-item-count">36</span>
-              <span class="site-state-item-name">分类</span>
+        
+          
+            <div class="site-state-item site-state-posts">
+              <a href="/archives">
+                <span class="site-state-item-count">12</span>
+                <span class="site-state-item-name">日志</span>
               </a>
-          </div>
+            </div>
+          
 
-          <div class="site-state-item site-state-tags">
-            <a href="/tags">
-              <span class="site-state-item-count">29</span>
-              <span class="site-state-item-name">标签</span>
+          
+            <div class="site-state-item site-state-categories">
+              <a href="/categories">
+                <span class="site-state-item-count">36</span>
+                <span class="site-state-item-name">分类</span>
               </a>
-          </div>
+            </div>
+          
+
+          
+            <div class="site-state-item site-state-tags">
+              <a href="/tags">
+                <span class="site-state-item-count">29</span>
+                <span class="site-state-item-name">标签</span>
+              </a>
+            </div>
+          
 
         </nav>
 
@@ -789,26 +968,29 @@ Interceptor介绍1234567891011  /*  *主要是这两个方法,我们要拿到此
           
             
               <span class="links-of-author-item">
-                <a href="https://github.com/Yaccc" target="_blank">
+                <a href="https://github.com/Yaccc" target="_blank" title="GitHub">
                   
-                    <i class="fa fa-github"></i> GitHub
+                    <i class="fa fa-fw fa-github"></i>
                   
+                  GitHub
                 </a>
               </span>
             
               <span class="links-of-author-item">
-                <a href="http://weibo.com/u/2571066903" target="_blank">
+                <a href="http://weibo.com/u/2571066903" target="_blank" title="微博">
                   
-                    <i class="fa fa-globe"></i> 微博
+                    <i class="fa fa-fw fa-globe"></i>
                   
+                  微博
                 </a>
               </span>
             
               <span class="links-of-author-item">
-                <a href="http://www.zhihu.com/people/JAVAC" target="_blank">
+                <a href="http://www.zhihu.com/people/JAVAC" target="_blank" title="知乎">
                   
-                    <i class="fa fa-globe"></i> 知乎
+                    <i class="fa fa-fw fa-globe"></i>
                   
+                  知乎
                 </a>
               </span>
             
@@ -818,36 +1000,45 @@ Interceptor介绍1234567891011  /*  *主要是这两个方法,我们要拿到此
         
         
 
-        <div class="links-of-author motion-element">
-          
-            <p class="site-author-name">links</p>
-            
-              <span class="links-of-author-item">
-                <a href="http://harry.wiki/" target="_blank">Mr.Harry</a>
-              </span>
-            
-              <span class="links-of-author-item">
-                <a href="https://ilulu.xyz/" target="_blank">ilulu</a>
-              </span>
-            
-              <span class="links-of-author-item">
-                <a href="http://wjd1218.github.io/" target="_blank">0-?</a>
-              </span>
-            
-              <span class="links-of-author-item">
-                <a href="http://ios.dog" target="_blank">ios.dog</a>
-              </span>
-            
-              <span class="links-of-author-item">
-                <a href="http://jucsinyu.com" target="_blank">jucsinyu</a>
-              </span>
-            
-              <span class="links-of-author-item">
-                <a href="http://blog.liexing.me" target="_blank">沈津生</a>
-              </span>
-            
-          
-        </div>
+        
+        
+          <div class="links-of-blogroll motion-element links-of-blogroll-inline">
+            <div class="links-of-blogroll-title">
+              <i class="fa  fa-fw fa-globe"></i>
+              links
+            </div>
+            <ul class="links-of-blogroll-list">
+              
+                <li class="links-of-blogroll-item">
+                  <a href="http://harry.wiki/" title="Mr.Harry" target="_blank">Mr.Harry</a>
+                </li>
+              
+                <li class="links-of-blogroll-item">
+                  <a href="https://ilulu.xyz/" title="ilulu" target="_blank">ilulu</a>
+                </li>
+              
+                <li class="links-of-blogroll-item">
+                  <a href="http://wjd1218.github.io/" title="0-?" target="_blank">0-?</a>
+                </li>
+              
+                <li class="links-of-blogroll-item">
+                  <a href="http://ios.dog" title="ios.dog" target="_blank">ios.dog</a>
+                </li>
+              
+                <li class="links-of-blogroll-item">
+                  <a href="http://jucsinyu.com" title="jucsinyu" target="_blank">jucsinyu</a>
+                </li>
+              
+                <li class="links-of-blogroll-item">
+                  <a href="http://blog.liexing.me" title="沈津生" target="_blank">沈津生</a>
+                </li>
+              
+            </ul>
+          </div>
+        
+
+        
+
 
       </section>
 
@@ -868,13 +1059,14 @@ Interceptor介绍1234567891011  /*  *主要是这两个方法,我们要拿到此
   &copy;  2015 - 
   <span itemprop="copyrightYear">2017</span>
   <span class="with-love">
-    <i class="icon-next-heart fa fa-heart"></i>
+    <i class="fa fa-xiezhaodong"></i>
   </span>
   <span class="author" itemprop="copyrightHolder">谢照东</span>
 </div>
 
+
 <div class="powered-by">
-  由 <a class="theme-link" href="http://hexo.io">Hexo</a> 强力驱动
+  由 <a class="theme-link" href="https://hexo.io">Hexo</a> 强力驱动
 </div>
 
 <div class="theme-info">
@@ -885,58 +1077,82 @@ Interceptor介绍1234567891011  /*  *主要是这两个方法,我们要拿到此
 </div>
 
 
+        
 
+        
       </div>
     </footer>
 
-    <div class="back-to-top"></div>
+    <div class="back-to-top">
+      <i class="fa fa-arrow-up"></i>
+    </div>
   </div>
 
   
 
-
-  
-
-
-
-  <script type="text/javascript" src="/vendors/jquery/index.js?v=2.1.3"></script>
-
-  <script type="text/javascript" src="/vendors/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
-
-  <script type="text/javascript" src="/vendors/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
-
-  <script type="text/javascript" src="/vendors/velocity/velocity.min.js"></script>
-
-  <script type="text/javascript" src="/vendors/velocity/velocity.ui.min.js"></script>
-
-  <script type="text/javascript" src="/vendors/fancybox/source/jquery.fancybox.pack.js"></script>
-
-
-  
-
-
-  <script type="text/javascript" src="/js/src/utils.js?v=5.0.0"></script>
-
-  <script type="text/javascript" src="/js/src/motion.js?v=5.0.0"></script>
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
 
 
 
-  
-  
 
 
-  <script type="text/javascript" src="/js/src/affix.js?v=5.0.0"></script>
 
-  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.0.0"></script>
 
 
 
   
 
+
+
+
+  
+  <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+
+  
+  <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+
+  
+  <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+  
+  <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+
+
   
 
 
-  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.0.0"></script>
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.0"></script>
+
+
+
+  
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.0"></script>
 
 
 
@@ -961,16 +1177,36 @@ Interceptor介绍1234567891011  /*  *主要是这两个方法,我们要拿到此
 
   
     
+      
+      <script src="/lib/ua-parser-js/dist/ua-parser.min.js?v=0.7.9"></script>
+      <script src="/js/src/hook-duoshuo.js?v=5.1.0"></script>
+    
+    
+    <script src="/lib/ua-parser-js/dist/ua-parser.min.js?v=0.7.9"></script>
+    <script src="/js/src/hook-duoshuo.js"></script>
   
 
 
 
 
 
+
+
+
+
+
+
+
+
   
   
 
   
+
+  
+
+  
+
   
 
 
