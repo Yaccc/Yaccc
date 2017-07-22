@@ -1,0 +1,959 @@
+<!doctype html>
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-Hans">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+  
+  
+  
+  
+
+  
+    
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    
+    
+    <link href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&subset=latin,latin-ext" rel="stylesheet" type="text/css">
+  
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.0" rel="stylesheet" type="text/css" />
+
+
+  <meta name="keywords" content="MySQL,java,jdbc,数据库,超时," />
+
+
+
+
+
+  <link rel="alternate" href="/atom.xml" title="「十年饮冰」" type="application/atom+xml" />
+
+
+
+
+  <link rel="shortcut icon" type="image/x-icon" href="/images/touxiang.jpg?v=5.1.0" />
+
+
+
+
+
+
+<meta name="description" content="前言上周在线上出现出现报警，ID号码一直无法获取，但是只有这一台机器报警，所以第一时间先在服务治理平台上禁用掉这台机器保证服务正常。停掉机器后要排查问题，思考分析步骤如下:
+
+通过监控发现只有一个key的ID调用发生下降（第一张），这台机器上的其他key没有任何问题，从数据库更新号段正常。是不是数据库死锁了？
+这个key在其他机器更新key是正常的，排除数据库的问题，那么就是这台机器的问题
+查看l">
+<meta property="og:type" content="article">
+<meta property="og:title" content="深入分析JDBC超时机制">
+<meta property="og:url" content="http://yaccc.gitchub.io/2017/07/22/深入分析JDBC超时机制/index.html">
+<meta property="og:site_name" content="「十年饮冰」">
+<meta property="og:description" content="前言上周在线上出现出现报警，ID号码一直无法获取，但是只有这一台机器报警，所以第一时间先在服务治理平台上禁用掉这台机器保证服务正常。停掉机器后要排查问题，思考分析步骤如下:
+
+通过监控发现只有一个key的ID调用发生下降（第一张），这台机器上的其他key没有任何问题，从数据库更新号段正常。是不是数据库死锁了？
+这个key在其他机器更新key是正常的，排除数据库的问题，那么就是这台机器的问题
+查看l">
+<meta property="og:image" content="http://img.blog.csdn.net/20170722182618783?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast">
+<meta property="og:image" content="http://img.blog.csdn.net/20170722182631635?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast">
+<meta property="og:image" content="http://img.blog.csdn.net/20170722182651820?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast">
+<meta property="og:image" content="http://img.blog.csdn.net/20170722182720298?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast">
+<meta property="og:image" content="http://img.blog.csdn.net/20170722182732333?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast">
+<meta property="og:image" content="http://img.blog.csdn.net/20170722182742937?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast">
+<meta property="og:image" content="http://img.blog.csdn.net/20170722182752220?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast">
+<meta property="og:updated_time" content="2017-07-22T10:32:38.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="深入分析JDBC超时机制">
+<meta name="twitter:description" content="前言上周在线上出现出现报警，ID号码一直无法获取，但是只有这一台机器报警，所以第一时间先在服务治理平台上禁用掉这台机器保证服务正常。停掉机器后要排查问题，思考分析步骤如下:
+
+通过监控发现只有一个key的ID调用发生下降（第一张），这台机器上的其他key没有任何问题，从数据库更新号段正常。是不是数据库死锁了？
+这个key在其他机器更新key是正常的，排除数据库的问题，那么就是这台机器的问题
+查看l">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    sidebar: {"position":"left","display":"post"},
+    fancybox: true,
+    motion: true,
+    duoshuo: {
+      userId: 'undefined',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yaccc.gitchub.io/2017/07/22/深入分析JDBC超时机制/"/>
+
+
+
+
+
+  <title> 深入分析JDBC超时机制 | 「十年饮冰」 </title>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    
+  
+
+  <div class="container one-collumn sidebar-position-left page-post-detail ">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-meta ">
+  
+
+  <div class="custom-logo-site-title">
+    <a href="/"  class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <span class="site-title">「十年饮冰」</span>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+    
+      <p class="site-subtitle"></p>
+    
+</div>
+
+<div class="site-nav-toggle">
+  <button>
+    <span class="btn-bar"></span>
+    <span class="btn-bar"></span>
+    <span class="btn-bar"></span>
+  </button>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br />
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br />
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            归档
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            标签
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal " itemscope itemtype="http://schema.org/Article">
+  <link itemprop="mainEntityOfPage" href="http://yaccc.gitchub.io/2017/07/22/深入分析JDBC超时机制/">
+
+  <span style="display:none" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <meta itemprop="name" content="谢照东">
+    <meta itemprop="description" content="">
+    <meta itemprop="image" content="/images/touxiang.jpg">
+  </span>
+
+  <span style="display:none" itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+    <meta itemprop="name" content="「十年饮冰」">
+    <span style="display:none" itemprop="logo" itemscope itemtype="http://schema.org/ImageObject">
+      <img style="display:none;" itemprop="url image" alt="「十年饮冰」" src="">
+    </span>
+  </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+            
+            
+              
+                深入分析JDBC超时机制
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="Дата создания записи" itemprop="dateCreated datePublished" datetime="2017-07-22T17:54:34+08:00">
+                2017-07-22
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/java/" itemprop="url" rel="index">
+                    <span itemprop="name">java</span>
+                  </a>
+                </span>
+
+                
+                
+                  ， 
+                
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/java/jdbc/" itemprop="url" rel="index">
+                    <span itemprop="name">jdbc</span>
+                  </a>
+                </span>
+
+                
+                
+                  ， 
+                
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/java/jdbc/数据库/" itemprop="url" rel="index">
+                    <span itemprop="name">数据库</span>
+                  </a>
+                </span>
+
+                
+                
+                  ， 
+                
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/java/jdbc/数据库/MySQL/" itemprop="url" rel="index">
+                    <span itemprop="name">MySQL</span>
+                  </a>
+                </span>
+
+                
+                
+                  ， 
+                
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/java/jdbc/数据库/MySQL/超时/" itemprop="url" rel="index">
+                    <span itemprop="name">超时</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2017/07/22/深入分析JDBC超时机制/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count ds-thread-count" data-thread-key="2017/07/22/深入分析JDBC超时机制/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h3 id="前言">前言</h3><p>上周在线上出现出现报警，ID号码一直无法获取，但是只有这一台机器报警，所以第一时间先在服务治理平台上禁用掉这台机器保证服务正常。停掉机器后要排查问题，思考分析步骤如下:</p>
+<ul>
+<li>通过监控发现只有一个key的ID调用发生下降（第一张），这台机器上的其他key没有任何问题，从数据库更新号段正常。是不是数据库死锁了？</li>
+<li>这个key在其他机器更新key是正常的，排除数据库的问题，那么就是这台机器的问题</li>
+<li>查看log，发现这台机器确实没有更新数据库，两个号段的buffer都是空的。为什么更新数据库失败呢？难道是大量的超时？</li>
+<li>仔细检查log日志，发现并没有超时的error。首先没有超时，但是号段是null的，是不是线程的问题？难道是代码逻辑有问题？</li>
+<li>理了一遍逻辑发现代码逻辑没有问题，那是线程卡住了？</li>
+<li>马上抓几次jstack log。果然发现有一条更新线程一直处于runable状态（第二张），其他线程池里面的线程都是waiting状态（禁用了服务，没有请求不会更新).</li>
+<li>确定是线程一直卡住了，先重启这台机器，保证dx机房有两台机器工作。</li>
+<li>jstack的栈如下</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="string">"Thread-Segment-Update-4"</span> daemon prio=<span class="number">10</span> tid=<span class="number">0x00007f2c6000c000</span> nid=<span class="number">0x2455</span> runnable [<span class="number">0x00007f2c55deb000</span>]</span><br><span class="line">  java.lang.Thread.State: RUNNABLE</span><br><span class="line">   at java.net.SocketInputStream.socketRead0(Native Method)</span><br><span class="line">   at java.net.SocketInputStream.socketRead(SocketInputStream.java:<span class="number">116</span>)</span><br><span class="line">   at java.net.SocketInputStream.read(SocketInputStream.java:<span class="number">170</span>)</span><br><span class="line">   at java.net.SocketInputStream.read(SocketInputStream.java:<span class="number">141</span>)</span><br><span class="line">   at com.mysql.jdbc.util.ReadAheadInputStream.fill(ReadAheadInputStream.java:<span class="number">100</span>)</span><br><span class="line">   at com.mysql.jdbc.util.ReadAheadInputStream.readFromUnderlyingStreamIfNecessary(ReadAheadInputStream.java:<span class="number">143</span>)</span><br><span class="line">   at com.mysql.jdbc.util.ReadAheadInputStream.read(ReadAheadInputStream.java:<span class="number">173</span>)</span><br><span class="line">   - locked com.mysql.jdbc.util.ReadAheadInputStream@<span class="number">33</span>d807d4</span><br><span class="line">   at com.mysql.jdbc.MysqlIO.readFully(MysqlIO.java:<span class="number">2911</span>)</span><br><span class="line">   at com.mysql.jdbc.MysqlIO.reuseAndReadPacket(MysqlIO.java:<span class="number">3332</span>)</span><br><span class="line">   at com.mysql.jdbc.MysqlIO.reuseAndReadPacket(MysqlIO.java:<span class="number">3322</span>)</span><br><span class="line">   at com.mysql.jdbc.MysqlIO.checkErrorPacket(MysqlIO.java:<span class="number">3762</span>)</span><br><span class="line">   at com.mysql.jdbc.MysqlIO.sendCommand(MysqlIO.java:<span class="number">2435</span>)</span><br><span class="line">   at com.mysql.jdbc.MysqlIO.sqlQueryDirect(MysqlIO.java:<span class="number">2582</span>)</span><br><span class="line">   at com.mysql.jdbc.ConnectionImpl.execSQL(ConnectionImpl.java:<span class="number">2531</span>)</span><br><span class="line">   - locked com.mysql.jdbc.JDBC4Connection@<span class="number">178</span>ec6c</span><br><span class="line">   at com.mysql.jdbc.ConnectionImpl.setAutoCommit(ConnectionImpl.java:<span class="number">4852</span>)</span><br><span class="line">   - locked com.mysql.jdbc.JDBC4Connection@<span class="number">178</span>ec6c</span><br></pre></td></tr></table></figure>
+<p><img src="http://img.blog.csdn.net/20170722182618783?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast" alt=""><br><img src="http://img.blog.csdn.net/20170722182631635?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast" alt=""></p>
+<p>不理解上面的排查步骤没关系，理解成一句话就是:一个数据库操作的线程一直处于runable状态但是一直hand住没有返回值</p>
+<p>通过jstack的信息，可以发现是我们的一个事务在执行conn,setAutoCommit(true)时，一直在native方法read…长时间read。我们有设置超时时间，但是为什么这里会没有超时呢（发现时线程大概运行了有20min）？？？。咨询DBA同事定位问题之后，大概得出是因为我们没有设置socketTimeout。如果没有设置socketTimeout将会依赖OS底层的timeout，线上大概是30min。虽然通过DBA同事的经验解决了问题，但是仍然存在疑问，为什么mysql存在两种timeout机制呢？queryTimeout和socketTimeout？socketTimeout难道不应该是queryTimeout的子集？queryTimeout应该也能发现我们的Sql超时了啊？</p>
+<p>这就和JDBC的实现机制有关系了，为什么会有两种Timeout机制的存在。用一种超时不能解决问题吗？</p>
+<h3 id="JDBC执行SQL的原理">JDBC执行SQL的原理</h3><p>这个名词也就是queryTimeout，他是属于应用层面的timeout机制。用来控制我们sql语句执行的时间的超时，但是mysql并没有用他来发现所有的问题。下面摘抄一段Statement执行SQL的代码片段</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">CancelTask timeoutTask = <span class="keyword">null</span>;<span class="comment">//实现statementTimeout的timer。每一个SQL执行都会创建一个</span></span><br><span class="line"> </span><br><span class="line"><span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="comment">//有超时设置会初始化这个timer</span></span><br><span class="line">    <span class="keyword">if</span> (locallyScopedConnection.getEnableQueryTimeouts() &amp;&amp; <span class="keyword">this</span>.timeoutInMillis != <span class="number">0</span> &amp;&amp; locallyScopedConnection.versionMeetsMinimum(<span class="number">5</span>, <span class="number">0</span>, <span class="number">0</span>)) &#123;</span><br><span class="line">        timeoutTask = <span class="keyword">new</span> CancelTask(<span class="keyword">this</span>);</span><br><span class="line">        locallyScopedConnection.getCancelTimer().schedule(timeoutTask, <span class="keyword">this</span>.timeoutInMillis);</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    <span class="keyword">if</span> (!isBatch) &#123;</span><br><span class="line">        statementBegins();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//执行SQL（sync）</span></span><br><span class="line">    rs = locallyScopedConnection.execSQL(<span class="keyword">this</span>, <span class="keyword">null</span>, maxRowsToRetrieve, sendPacket, <span class="keyword">this</span>.resultSetType, <span class="keyword">this</span>.resultSetConcurrency,</span><br><span class="line">            createStreamingResultSet, <span class="keyword">this</span>.currentCatalog, metadataFromCache, isBatch);</span><br><span class="line"> </span><br><span class="line">    <span class="keyword">if</span> (timeoutTask != <span class="keyword">null</span>) &#123;</span><br><span class="line">        timeoutTask.cancel();</span><br><span class="line"> </span><br><span class="line">        locallyScopedConnection.getCancelTimer().purge();</span><br><span class="line"> </span><br><span class="line">        <span class="keyword">if</span> (timeoutTask.caughtWhileCancelling != <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">throw</span> timeoutTask.caughtWhileCancelling;</span><br><span class="line">        &#125;</span><br><span class="line"> </span><br><span class="line">        timeoutTask = <span class="keyword">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    <span class="keyword">synchronized</span> (<span class="keyword">this</span>.cancelTimeoutMutex) &#123;</span><br><span class="line">        <span class="keyword">if</span> (<span class="keyword">this</span>.wasCancelled) &#123;</span><br><span class="line">            SQLException cause = <span class="keyword">null</span>;</span><br><span class="line">            <span class="comment">//如果是被timer kill，则抛出异常</span></span><br><span class="line">            <span class="keyword">if</span> (<span class="keyword">this</span>.wasCancelledByTimeout) &#123;</span><br><span class="line">                cause = <span class="keyword">new</span> MySQLTimeoutException();</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                cause = <span class="keyword">new</span> MySQLStatementCancelledException();</span><br><span class="line">            &#125;</span><br><span class="line">            resetCancelledState();</span><br><span class="line">            <span class="comment">//抛出</span></span><br><span class="line">            <span class="keyword">throw</span> cause;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>Timer中的代码大致的意思就是copy一个和现在相同的connection，然后执行一条cancelStmt.execute(“KILL QUERY “ + CancelTask.this.connectionId); 语句给数据库,让数据库立刻停止这个链接的SQL  </p>
+<p>那么整个SQL执行的过程可以简单的描述如下：<br><img src="http://img.blog.csdn.net/20170722182651820?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast" alt=""></p>
+<ul>
+<li>执行SQL之前给每一个执行SQL创建一个对应超时时间的Timer，到了时间之后会去kill这调语句</li>
+<li>kill成功之后，数据库会立即返回一个result，也就是上面代码执行SQL语句的返回值</li>
+<li>正常执行语句，抛出超时异常</li>
+</ul>
+<p>这里值得注意的地方，为什么不直接用StatementTimeout直接发现超时，然后返回，不用管rs的结果到底是什么。为了防止超长时间的SQL在server端执行，JDBC在发现自己的statement超时之后，会发一个kill指令给server，那么这个server指令有超时时间吗？有timer吗？在最开始我们代码hang住的setAutoCommit（）指令有timer吗？<br>没有！！！！</p>
+<p>下面是通过jprofiler分别执行statement和执行setautoCommit两个指令的内存状态图，可以发现，后者是没有timer对象的（第二张），而前者有(第一张)！！！因为后者的代码根本就没有创建timer逻辑的部分。可以在源码里面看到后者会直接就调用底层的connectionImpl的execSQL方法执行SQL<br><img src="http://img.blog.csdn.net/20170722182720298?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast" alt=""></p>
+<p><img src="http://img.blog.csdn.net/20170722182732333?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast" alt=""></p>
+<p>但是kill是通过copy链接来发送kill命令的。会有timer吗?下图是在发送kill指令时，用debug可以看到,kill 指令发送的时候statementTimeout是0，是不会创建TImer的 ，第一张图是在执行Statement SQL的，超时时间是我们设置的2s，第二张图是执行kill指令时的，可以发现超时时间是0，不会创建timer。仔细想想也能明白，如果kill指令也有timer，逻辑和statement sql一样，那岂不是会无限循环！！<br><img src="http://img.blog.csdn.net/20170722182742937?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast" alt=""></p>
+<p><img src="http://img.blog.csdn.net/20170722182752220?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvYTgzNzE5OTY4NQ==/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast" alt=""></p>
+<h3 id="证明">证明</h3><h4 id="第一种">第一种</h4><p>socketTimeout设置得比StatementTimeOut小为1s，后者为5s执行如下语句:</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="title">bean</span> <span class="attribute">id</span>=<span class="value">"dataSource"</span> <span class="attribute">class</span>=<span class="value">"com.alibaba.druid.pool.DruidDataSource"</span> <span class="attribute">init-method</span>=<span class="value">"init"</span> <span class="attribute">destroy-method</span>=<span class="value">"close"</span>&gt;</span></span><br><span class="line">       <span class="comment">&lt;!-- 基本属性 url、user、password --&gt;</span></span><br><span class="line">       <span class="tag">&lt;<span class="title">property</span> <span class="attribute">name</span>=<span class="value">"url"</span> <span class="attribute">value</span>=<span class="value">"jdbc:mysql://127.0.0.2:3306/my?socketTimeout=1000"</span>/&gt;</span></span><br><span class="line">       <span class="tag">&lt;<span class="title">property</span> <span class="attribute">name</span>=<span class="value">"username"</span> <span class="attribute">value</span>=<span class="value">"root"</span> /&gt;</span></span><br><span class="line">       <span class="tag">&lt;<span class="title">property</span> <span class="attribute">name</span>=<span class="value">"password"</span> <span class="attribute">value</span>=<span class="value">"123456"</span> /&gt;</span></span><br><span class="line">       <span class="tag">&lt;<span class="title">property</span> <span class="attribute">name</span>=<span class="value">"queryTimeout"</span> <span class="attribute">value</span>=<span class="value">"5"</span>/&gt;</span></span><br><span class="line">        //省略</span><br><span class="line"> </span><br><span class="line"><span class="tag">&lt;/<span class="title">bean</span>&gt;</span></span><br><span class="line">//sql 10s之后返回数据</span><br><span class="line">select sleep(10) ,name from user where id=1</span><br></pre></td></tr></table></figure>
+<p>会在1s之后得到如下结果，看起来很正常，在timer没有发起kill之前，因为socket没有得到数据所以socket超时了，这一点提醒我们，设置socket超时一定要比statement长，不然你设置得statement超时将毫无意义</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">The last packet successfully received from the server was <span class="number">1</span>,<span class="number">057</span> milliseconds ago.  The last packet sent successfully to the server was <span class="number">1</span>,<span class="number">012</span> milliseconds ago.</span><br><span class="line">    at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)</span><br><span class="line">    at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:<span class="number">57</span>)</span><br><span class="line">    at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:<span class="number">45</span></span><br></pre></td></tr></table></figure>
+<h4 id="第二种">第二种</h4><p>把statement设置为2s，socketTime设置成6s。会在2s之后得到如下输出。如果socketTime设置成比statement大，那么在后者超时之后，会去kill掉SQL之后立马返回抛出异常</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">com.mysql.jdbc.exceptions.MySQLTimeoutException: Statement cancelled due to timeout or client request</span><br><span class="line">    at com.mysql.jdbc.StatementImpl.executeQuery(StatementImpl.java:<span class="number">1390</span>)</span><br><span class="line">    at com.alibaba.druid.pool.DruidPooledStatement.executeQuery(DruidPooledStatement.java:<span class="number">140</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="第三种">第三种</h4><p>和第二种相同的情况，把statement的超时设置成5s，socket超时设置成15s。但是我会在发起kill之前把网络给断掉，来模拟出现网络问题，或者server直接down掉的情况。会在15s后得到一下结果</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">The last packet successfully received from the server was <span class="number">15</span>,<span class="number">003</span> milliseconds ago.  The last packet sent successfully to the server was <span class="number">15</span>,<span class="number">004</span> milliseconds ago.</span><br><span class="line">    at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)</span><br><span class="line">    at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:<span class="number">57</span>)</span><br><span class="line">    at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:<span class="number">45</span>)</span><br></pre></td></tr></table></figure>
+<p>为什么是15s后呢？为什么不是statement的超时的时间呢？这就和上面JDBC源码部分有关系了。从上面的代码可以看出，rs必须返回之后才会抛出异常，当rs不返回时不会继续往下走的。rs什么时候返回？关于kill query什么时候返回，在网上找的一些资料 <a href="https://dev.mysql.com/doc/refman/5.7/en/kill.html" target="_blank" rel="external">https://dev.mysql.com/doc/refman/5.7/en/kill.html</a></p>
+<h3 id="kill命令详解">kill命令详解</h3><p>注：只针对innodb引擎</p>
+<p>mysql KILL QUERY只abort线程当前提交执行的操作，其他的保持不变，并且db server报SQL 语法异常（You have an error in your SQL syntax）。<br>根据当前被kill的statement是否在事务中，分两种情况分析：</p>
+<ul>
+<li>(1) 不在事务中（未显式开启）<br>innodb中statement具有原子性。因此kill掉后，会导致statement abort，回滚掉。</li>
+<li><p>(2) 在事务中</p>
+<ul>
+<li><p>假设事务中sql执行顺序是sql1;sql2;sql3; 在执行sql2时被kill掉，则sql2会抛出异常，并且sql2执行失败。但是sql3依旧会执行下去。此时如果在spring层做了事务回滚处理，会对三条sql全部回滚掉。</p>
+</li>
+<li><p>sql抛出的异常时MySQLSyntaxErrorException，我们会看到它是受检异常，但是我们了解spring默认是只对非受检异常做回滚处理的，怎么会这样呢？是框架对其做了转化，最终转为非受检异常，spring事物管理器就可以对其做回滚处理了。</p>
+</li>
+</ul>
+</li>
+</ul>
+<h4 id="mysql收到kill_query后执行时机">mysql收到kill query后执行时机</h4><p>KILL操作后，该线程上会设置一个特殊的 kill标记位。通常需要一段时间后才能真正关闭线程，因为kill标记位只在特定的情况下才检查。具体时机是</p>
+<ul>
+<li>执行SELECT查询时，在ORDER BY或GROUP BY循环中，每次读完一些行记录块后会检查 kill标记位，如果发现存在，该语句会终止；</li>
+<li>执行ALTER TABLE时，在从原始表中每读取一些行记录块后会检查 kill 标记位，如果发现存在，该语句会终止，删除临时表；</li>
+<li>执行UPDATE和DELETE时，每读取一些行记录块并且更新或删除后会检查 kill 标记位，如果发现存在，该语句会终止，回滚事务，若是在非事务表上的操作，则已发生变更的数据不会回滚；</li>
+<li>GET_LOCK() 函数返回NULL；</li>
+<li>INSERT DELAY线程会迅速内存中的新增记录，然后终止；</li>
+<li>如果当前线程持有表级锁，则会释放，并终止；</li>
+<li>如果线程的写操作调用在等待释放磁盘空间，则会直接抛出“磁盘空间满”错误，然后终止；</li>
+<li>当MyISAM表在执行REPAIR TABLE 或 OPTIMIZE TABLE 时被 KILL的话，会导致该表损坏不可用，指导再次修复完成。</li>
+</ul>
+<p>所以，当kill query这条指令发送过去的时候，由于网络问题一直没响应，会等到socketTimeout之后，整个SQL语句的执行才会返回。所以socketTimeout也不宜设置得太长，在网络不好的时候超时时间基本上不会是statementTimeout的时长。这也就证明了jstack中的问题，那一时刻出现了网络问题，到时setAutoCommit这条指令被卡住，由于没有设置socket超时，得依赖os底层的socket超时时间30min，其实如果我们不重启服务，相信30min钟后服务会自愈。<br>最好大家自己执行一下上面三种情况，就能很快理解</p>
+<h3 id="总结">总结</h3><ul>
+<li>StatementTimeout主要是为了限制我们执行SQL语句的时长，由于设计问题并不能包含所以超时情况</li>
+<li>除了用户自己写的SQL，其他的SQL指令依赖的超时时间都是socket超时。例如执行事务时的setAutoCommit和statement执行SQL超时时执行的kill query指令</li>
+<li>可不可以只设置socket超时？最好不要，如果这样的话会导致mysql server有大量长时间运行的SQL(没有被超时kill)</li>
+<li>socketTimout一定要设置得大于statementTimeout，不然设置后者将会没有任何意义</li>
+<li>一个SQL就会有一个timer的产生，这一点以前是不知道的，以为都是依赖的底层超时</li>
+</ul>
+<h3 id="资料">资料</h3><p><a href="http://imysql.com/2014/08/13/mysql-faq-howto-shutdown-mysqld-fulgraceful.shtml" target="_blank" rel="external">http://imysql.com/2014/08/13/mysql-faq-howto-shutdown-mysqld-fulgraceful.shtml</a><br><a href="http://www.importnew.com/2466.html" target="_blank" rel="external">http://www.importnew.com/2466.html</a><br><a href="https://dev.mysql.com/doc/refman/5.7/en/kill.html" target="_blank" rel="external">https://dev.mysql.com/doc/refman/5.7/en/kill.html</a>        </p>
+
+      
+    </div>
+
+    <div>
+      
+        
+<div id="wechat_subscriber" style="display: block; padding: 10px 0; margin: 20px auto; width: 100%; text-align: center">
+    <img id="wechat_subscriber_qcode" src="/images/erweima.png" alt="谢照东 wechat" style="width: 200px; max-width: 100%;"/>
+    <div>欢迎您扫一扫上面的微信公众号，订阅我的博客！</div>
+</div>
+
+
+      
+    </div>
+
+    <div>
+      
+        
+  <div style="padding: 10px 0; margin: 20px auto; width: 90%; text-align: center;">
+    <div>坚持原创技术分享，您的支持将鼓励我继续创作！</div>
+    <button id="rewardButton" disable="enable" onclick="var qr = document.getElementById('QR'); if (qr.style.display === 'none') {qr.style.display='block';} else {qr.style.display='none'}">
+      <span>赏</span>
+    </button>
+    <div id="QR" style="display: none;">
+      
+        <div id="wechat" style="display: inline-block">
+          <img id="wechat_qr" src="/images/wechat.jpeg" alt="谢照东 WeChat Pay"/>
+          <p>微信打赏</p>
+        </div>
+      
+      
+        <div id="alipay" style="display: inline-block">
+          <img id="alipay_qr" src="/images/alipay.jpeg" alt="谢照东 Alipay"/>
+          <p>支付宝打赏</p>
+        </div>
+      
+    </div>
+  </div>
+
+
+      
+    </div>
+
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/MySQL/" rel="tag"># MySQL</a>
+          
+            <a href="/tags/java/" rel="tag"># java</a>
+          
+            <a href="/tags/jdbc/" rel="tag"># jdbc</a>
+          
+            <a href="/tags/数据库/" rel="tag"># 数据库</a>
+          
+            <a href="/tags/超时/" rel="tag"># 超时</a>
+          
+        </div>
+      
+
+      
+        
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2017/07/22/一次堆外OOM问题的排查/" rel="next" title="一次堆外OOM问题的排查">
+                <i class="fa fa-chevron-left"></i> 一次堆外OOM问题的排查
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+          
+          </div>
+          
+
+
+          
+  <div class="comments" id="comments">
+    
+      <div class="ds-thread" data-thread-key="2017/07/22/深入分析JDBC超时机制/"
+           data-title="深入分析JDBC超时机制" data-url="http://yaccc.gitchub.io/2017/07/22/深入分析JDBC超时机制/">
+      </div>
+    
+  </div>
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap" >
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+          <img class="site-author-image" itemprop="image"
+               src="/images/touxiang.jpg"
+               alt="谢照东" />
+          <p class="site-author-name" itemprop="name">谢照东</p>
+          <p class="site-description motion-element" itemprop="description">我没有梦想，但是我有一个野心</p>
+        </div>
+        <nav class="site-state motion-element">
+        
+          
+            <div class="site-state-item site-state-posts">
+              <a href="/archives">
+                <span class="site-state-item-count">16</span>
+                <span class="site-state-item-name">日志</span>
+              </a>
+            </div>
+          
+
+          
+            <div class="site-state-item site-state-categories">
+              <a href="/categories">
+                <span class="site-state-item-count">51</span>
+                <span class="site-state-item-name">分类</span>
+              </a>
+            </div>
+          
+
+          
+            <div class="site-state-item site-state-tags">
+              <a href="/tags">
+                <span class="site-state-item-count">42</span>
+                <span class="site-state-item-name">标签</span>
+              </a>
+            </div>
+          
+
+        </nav>
+
+        
+          <div class="feed-link motion-element">
+            <a href="/atom.xml" rel="alternate">
+              <i class="fa fa-rss"></i>
+              RSS
+            </a>
+          </div>
+        
+
+        <div class="links-of-author motion-element">
+          
+            
+              <span class="links-of-author-item">
+                <a href="https://github.com/Yaccc" target="_blank" title="GitHub">
+                  
+                    <i class="fa fa-fw fa-github"></i>
+                  
+                  GitHub
+                </a>
+              </span>
+            
+              <span class="links-of-author-item">
+                <a href="http://weibo.com/u/2571066903" target="_blank" title="微博">
+                  
+                    <i class="fa fa-fw fa-globe"></i>
+                  
+                  微博
+                </a>
+              </span>
+            
+              <span class="links-of-author-item">
+                <a href="http://www.zhihu.com/people/JAVAC" target="_blank" title="知乎">
+                  
+                    <i class="fa fa-fw fa-globe"></i>
+                  
+                  知乎
+                </a>
+              </span>
+            
+          
+        </div>
+
+        
+        
+
+        
+        
+          <div class="links-of-blogroll motion-element links-of-blogroll-inline">
+            <div class="links-of-blogroll-title">
+              <i class="fa  fa-fw fa-globe"></i>
+              links
+            </div>
+            <ul class="links-of-blogroll-list">
+              
+                <li class="links-of-blogroll-item">
+                  <a href="http://harry.wiki/" title="Mr.Harry" target="_blank">Mr.Harry</a>
+                </li>
+              
+                <li class="links-of-blogroll-item">
+                  <a href="https://ilulu.xyz/" title="ilulu" target="_blank">ilulu</a>
+                </li>
+              
+                <li class="links-of-blogroll-item">
+                  <a href="http://wjd1218.github.io/" title="0-?" target="_blank">0-?</a>
+                </li>
+              
+                <li class="links-of-blogroll-item">
+                  <a href="http://ios.dog" title="ios.dog" target="_blank">ios.dog</a>
+                </li>
+              
+                <li class="links-of-blogroll-item">
+                  <a href="http://jucsinyu.com" title="jucsinyu" target="_blank">jucsinyu</a>
+                </li>
+              
+                <li class="links-of-blogroll-item">
+                  <a href="http://blog.liexing.me" title="沈津生" target="_blank">沈津生</a>
+                </li>
+              
+            </ul>
+          </div>
+        
+
+        
+
+
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#前言"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#JDBC执行SQL的原理"><span class="nav-number">2.</span> <span class="nav-text">JDBC执行SQL的原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#证明"><span class="nav-number">3.</span> <span class="nav-text">证明</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#第一种"><span class="nav-number">3.1.</span> <span class="nav-text">第一种</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#第二种"><span class="nav-number">3.2.</span> <span class="nav-text">第二种</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#第三种"><span class="nav-number">3.3.</span> <span class="nav-text">第三种</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kill命令详解"><span class="nav-number">4.</span> <span class="nav-text">kill命令详解</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#mysql收到kill_query后执行时机"><span class="nav-number">4.1.</span> <span class="nav-text">mysql收到kill query后执行时机</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#总结"><span class="nav-number">5.</span> <span class="nav-text">总结</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#资料"><span class="nav-number">6.</span> <span class="nav-text">资料</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright" >
+  
+  &copy;  2015 - 
+  <span itemprop="copyrightYear">2017</span>
+  <span class="with-love">
+    <i class="fa fa-xiezhaodong"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">谢照东</span>
+</div>
+
+
+<div class="powered-by">
+  由 <a class="theme-link" href="https://hexo.io">Hexo</a> 强力驱动
+</div>
+
+<div class="theme-info">
+  主题 -
+  <a class="theme-link" href="https://github.com/iissnan/hexo-theme-next">
+    NexT.Pisces
+  </a>
+</div>
+
+
+        
+
+        
+      </div>
+    </footer>
+
+    <div class="back-to-top">
+      <i class="fa fa-arrow-up"></i>
+    </div>
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+  
+  <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+
+  
+  <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+
+  
+  <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+  
+  <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.0"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.0"></script>
+
+
+
+  
+
+  
+    
+  
+
+  <script type="text/javascript">
+    var duoshuoQuery = {short_name:"xiezhaodong"};
+    (function() {
+      var ds = document.createElement('script');
+      ds.type = 'text/javascript';ds.async = true;
+      ds.id = 'duoshuo-script';
+      ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+      ds.charset = 'UTF-8';
+      (document.getElementsByTagName('head')[0]
+      || document.getElementsByTagName('body')[0]).appendChild(ds);
+    })();
+  </script>
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+
+</body>
+</html>
